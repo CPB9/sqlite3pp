@@ -32,10 +32,10 @@
 
 #include <functional>
 #include <iterator>
-#include <sqlite3.h>
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include "sqlite3.h"
 
 namespace sqlite3pp
 {
