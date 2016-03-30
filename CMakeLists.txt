@@ -7,6 +7,9 @@ add_library(sqlite3pp
     src/sqlite3pp.h
     src/sqlite3ppext.cpp
     src/sqlite3ppext.h
+    src/sqlite3.c
+    src/sqlite3.h
+    src/sqlite3ext.h
 )
 
 target_include_directories(sqlite3pp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
