@@ -1,0 +1,3 @@
+[submodule "thirdparty/bmcl"]
+	path = thirdparty/bmcl
+	url = https://github.com/CPB9/bmcl
