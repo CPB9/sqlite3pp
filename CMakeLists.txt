@@ -12,6 +12,8 @@ add_library(sqlite3pp
     src/sqlite3ext.h
 )
 
+target_link_libraries(sqlite3pp bmcl)
+
 target_include_directories(sqlite3pp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(NOT MSVC)
