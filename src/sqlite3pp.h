@@ -36,6 +36,7 @@
 #include <string>
 #include <tuple>
 #include "sqlite3.h"
+#include "bmcl/Option.h"
 
 namespace sqlite3pp
 {
