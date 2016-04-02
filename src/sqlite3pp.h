@@ -22,41 +22,75 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#ifndef SQLITE3PP_H
-#define SQLITE3PP_H
-
+#pragma once
 #define SQLITE3PP_VERSION "1.0.0"
 #define SQLITE3PP_VERSION_MAJOR 1
 #define SQLITE3PP_VERSION_MINOR 0
 #define SQLITE3PP_VERSION_PATCH 0
 
+#include <chrono>
 #include <functional>
 #include <iterator>
-#include <stdexcept>
 #include <string>
 #include <tuple>
-#include "sqlite3.h"
 #include "bmcl/Option.h"
+#include "bmcl/Result.h"
+#include "bmcl/StringView.h"
+#include "bmcl/ArrayView.h"
+
+struct sqlite3;
+struct sqlite3_stmt;
 
 namespace sqlite3pp
 {
-  namespace ext
-  {
+namespace ext
+{
     class function;
     class aggregate;
-  }
+}
 
-  template <class T>
-  struct convert {
-    using to_int = int;
-  };
+template <class T>
+struct convert {
+    using to_uint = unsigned int;
+};
 
-  class null_type {};
-  extern null_type ignore;
+class null_type {};
+extern null_type ignore;
+typedef unsigned int uint;
 
-  class noncopyable
-  {
-   protected:
+typedef int Error;
+std::string to_string(Error);
+
+enum FileFlags
+{
+    OPEN_READONLY         = 0x00000001,  /* Ok for sqlite3_open_v2() */
+    OPEN_READWRITE        = 0x00000002,  /* Ok for sqlite3_open_v2() */
+    OPEN_CREATE           = 0x00000004,  /* Ok for sqlite3_open_v2() */
+    OPEN_DELETEONCLOSE    = 0x00000008,  /* VFS only */
+    OPEN_EXCLUSIVE        = 0x00000010,  /* VFS only */
+    OPEN_AUTOPROXY        = 0x00000020,  /* VFS only */
+    OPEN_URI              = 0x00000040,  /* Ok for sqlite3_open_v2() */
+    OPEN_MEMORY           = 0x00000080,  /* Ok for sqlite3_open_v2() */
+    OPEN_MAIN_DB          = 0x00000100,  /* VFS only */
+    OPEN_TEMP_DB          = 0x00000200,  /* VFS only */
+    OPEN_TRANSIENT_DB     = 0x00000400,  /* VFS only */
+    OPEN_MAIN_JOURNAL     = 0x00000800,  /* VFS only */
+    OPEN_TEMP_JOURNAL     = 0x00001000,  /* VFS only */
+    OPEN_SUBJOURNAL       = 0x00002000,  /* VFS only */
+    OPEN_MASTER_JOURNAL   = 0x00004000,  /* VFS only */
+    OPEN_NOMUTEX          = 0x00008000,  /* Ok for sqlite3_open_v2() */
+    OPEN_FULLMUTEX        = 0x00010000,  /* Ok for sqlite3_open_v2() */
+    OPEN_SHAREDCACHE      = 0x00020000,  /* Ok for sqlite3_open_v2() */
+    OPEN_PRIVATECACHE     = 0x00040000,  /* Ok for sqlite3_open_v2() */
+    OPEN_WAL              = 0x00080000,  /* VFS only */
+};
+
+enum class data_type : uint8_t { Integer = 1, Float = 2, Text = 3, Blob = 4, Null = 5 };
+
+
+class noncopyable
+{
+protected:
     noncopyable() = default;
     ~noncopyable() = default;
 
@@ -65,48 +99,49 @@ namespace sqlite3pp
 
     noncopyable(noncopyable const&) = delete;
     noncopyable& operator=(noncopyable const&) = delete;
-  };
+};
 
-  class database : noncopyable
-  {
+class database : noncopyable
+{
     friend class statement;
     friend class database_error;
     friend class ext::function;
     friend class ext::aggregate;
 
-   public:
-    using busy_handler = std::function<int (int)>;
-    using commit_handler = std::function<int ()>;
-    using rollback_handler = std::function<void ()>;
-    using update_handler = std::function<void (int, char const*, char const*, long long int)>;
+public:
+    using busy_handler = std::function<int(int)>;
+    using commit_handler = std::function<int()>;
+    using rollback_handler = std::function<void()>;
+    using update_handler = std::function<void (int, char const*, char const*, int64_t)>;
     using authorize_handler = std::function<int (int, char const*, char const*, char const*, char const*)>;
 
-    explicit database(char const* dbname = nullptr, int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, const char* vfs = nullptr);
+    explicit database();
+    explicit database(bmcl::StringView db, uint flags = OPEN_READWRITE | OPEN_CREATE, bmcl::StringView vfs = nullptr);
 
     database(database&& db);
     database& operator=(database&& db);
 
     ~database();
 
-    int connect(char const* dbname, int flags, const char* vfs = nullptr);
-    int disconnect();
+    bmcl::Option<Error> connect(bmcl::StringView dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, bmcl::StringView vfs = nullptr);
+    bmcl::Option<Error> disconnect();
 
-    int attach(char const* dbname, char const* name);
-    int detach(char const* name);
+    bmcl::Option<Error> attach(bmcl::StringView dbname, bmcl::StringView name);
+    bmcl::Option<Error> detach(bmcl::StringView name);
 
-    long long int last_insert_rowid() const;
+    bmcl::Option<uint64_t> last_insert_rowid() const;
 
-    int enable_foreign_keys(bool enable = true);
-    int enable_triggers(bool enable = true);
-    int enable_extended_result_codes(bool enable = true);
+    bmcl::Option<Error> enable_foreign_keys(bool enable = true);
+    bmcl::Option<Error> enable_triggers(bool enable = true);
+    bmcl::Option<Error> enable_extended_result_codes(bool enable = true);
 
-    int error_code() const;
+    Error error_code() const;
     char const* error_msg() const;
 
-    int execute(char const* sql);
-    int executef(char const* sql, ...);
+    bmcl::Option<Error> execute(bmcl::StringView sql);
+    bmcl::Option<Error> executef(bmcl::StringView sql, ...);
 
-    int set_busy_timeout(int ms);
+    bmcl::Option<Error> set_busy_timeout(std::chrono::milliseconds timeout);
 
     void set_busy_handler(busy_handler h);
     void set_commit_handler(commit_handler h);
@@ -114,7 +149,7 @@ namespace sqlite3pp
     void set_update_handler(update_handler h);
     void set_authorize_handler(authorize_handler h);
 
-   private:
+private:
     sqlite3* db_;
 
     busy_handler bh_;
@@ -122,204 +157,190 @@ namespace sqlite3pp
     rollback_handler rh_;
     update_handler uh_;
     authorize_handler ah_;
-  };
+};
 
-  class database_error : public std::runtime_error
-  {
-   public:
-    explicit database_error(char const* msg);
+class database_error : public std::runtime_error
+{
+public:
+    explicit database_error(bmcl::StringView msg);
     explicit database_error(database& db);
-  };
+};
 
   enum copy_semantic { copy, nocopy };
 
-  class statement : noncopyable
-  {
-   public:
-    int prepare(char const* stmt);
-    int finish();
+class statement : noncopyable
+{
+public:
+    bmcl::Option<Error> prepare(bmcl::StringView stmt);
+    bmcl::Option<Error> finish();
 
-    int bind(int idx, int value);
-    int bind(int idx, double value);
-    int bind(int idx, long long int value);
-    int bind(int idx, char const* value, copy_semantic fcopy);
-    int bind(int idx, void const* value, int n, copy_semantic fcopy);
-    int bind(int idx, std::string const& value, copy_semantic fcopy);
-    int bind(int idx);
-    int bind(int idx, null_type);
+    bmcl::Option<Error> bind(uint idx, int value);
+    bmcl::Option<Error> bind(uint idx, double value);
+    bmcl::Option<Error> bind(uint idx, int64_t value);
+    bmcl::Option<Error> bind(uint idx, bmcl::StringView value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(uint idx, bmcl::Bytes value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(uint idx, null_type);
+    bmcl::Option<Error> bind(uint idx);
 
-    int bind(char const* name, int value);
-    int bind(char const* name, double value);
-    int bind(char const* name, long long int value);
-    int bind(char const* name, char const* value, copy_semantic fcopy);
-    int bind(char const* name, void const* value, int n, copy_semantic fcopy);
-    int bind(char const* name, std::string const& value, copy_semantic fcopy);
-    int bind(char const* name);
-    int bind(char const* name, null_type);
+    bmcl::Option<Error> bind(bmcl::StringView name, int value);
+    bmcl::Option<Error> bind(bmcl::StringView name,  double value);
+    bmcl::Option<Error> bind(bmcl::StringView name, int64_t value);
+    bmcl::Option<Error> bind(bmcl::StringView name, bmcl::StringView value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(bmcl::StringView name, bmcl::Bytes value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(bmcl::StringView name, null_type);
+    bmcl::Option<Error> bind(bmcl::StringView name);
 
-    int step();
-    int reset();
+    bmcl::Result<bool, Error> step();
+    bmcl::Option<Error> reset();
 
-   protected:
-    explicit statement(database& db, char const* stmt = nullptr);
-    ~statement() noexcept(false);
+protected:
+    explicit statement(database& db, bmcl::StringView stmt = nullptr);
+    ~statement();
 
-    int prepare_impl(char const* stmt);
-    int finish_impl(sqlite3_stmt* stmt);
+    bmcl::Option<Error> prepare_impl(bmcl::StringView stmt);
+    bmcl::Option<Error> finish_impl(sqlite3_stmt* stmt);
 
-   protected:
+protected:
     database& db_;
     sqlite3_stmt* stmt_;
     char const* tail_;
-  };
+};
 
-  class command : public statement
-  {
-   public:
+class command : public statement
+{
+public:
     class bindstream
     {
-     public:
-      bindstream(command& cmd, int idx);
-
-      template <class T>
-      bindstream& operator << (T value) {
-        auto rc = cmd_.bind(idx_, value);
-        if (rc != SQLITE_OK) {
-          throw database_error(cmd_.db_);
-        }
-        ++idx_;
-        return *this;
-      }
-      bindstream& operator << (char const* value) {
-        auto rc = cmd_.bind(idx_, value, copy);
-        if (rc != SQLITE_OK) {
-          throw database_error(cmd_.db_);
-        }
-        ++idx_;
-        return *this;
-      }
-      bindstream& operator << (std::string const& value) {
-        auto rc = cmd_.bind(idx_, value, copy);
-        if (rc != SQLITE_OK) {
-          throw database_error(cmd_.db_);
-        }
-        ++idx_;
-        return *this;
-      }
-
-     private:
-      command& cmd_;
-      int idx_;
-    };
-
-    explicit command(database& db, char const* stmt = nullptr);
-
-    bindstream binder(int idx = 1);
-
-    int execute();
-    int execute_all();
-  };
-
-  class query : public statement
-  {
-   public:
-    class rows
-    {
-     public:
-      class getstream
-      {
-       public:
-        getstream(rows* rws, int idx);
+    public:
+        bindstream(command& cmd, uint idx);
 
         template <class T>
-        getstream& operator >> (T& value) {
-          value = rws_->get(idx_, T());
-          ++idx_;
-          return *this;
+        bindstream& operator << (T value)
+        {
+            auto rñ = cmd_.bind(idx_, value);
+            if (rñ.isSome())
+            {
+                assert(false);
+                throw database_error(cmd_.db_);
+            }
+            ++idx_;
+            return *this;
+        }
+        bindstream& operator << (bmcl::StringView value);
+    private:
+        command& cmd_;
+        uint idx_;
+    };
+
+    explicit command(database& db, bmcl::StringView stmt = nullptr);
+
+    bindstream binder(uint idx = 1);
+
+    bmcl::Result<bool, Error> execute();
+    bmcl::Option<Error> execute_all();
+};
+
+class query : public statement
+{
+public:
+    class rows
+    {
+    public:
+        class getstream
+        {
+        public:
+            getstream(rows* rws, uint idx);
+
+            template <class T>
+            getstream& operator >> (T& value) {
+                value = rws_->get<T>(idx_);
+                ++idx_;
+                return *this;
+            }
+
+        private:
+            rows* rws_;
+            uint idx_;
+        };
+
+        explicit rows(sqlite3_stmt* stmt);
+
+        uint data_count() const;
+        data_type column_type(uint idx) const;
+
+        uint column_bytes(uint idx) const;
+
+        template <class T> T get(uint idx) const;
+
+        template <class... Ts>
+        std::tuple<Ts...> get_columns(typename convert<Ts>::to_uint... idxs) const
+        {
+            return std::make_tuple(get<Ts>(idxs)...);
         }
 
-       private:
-        rows* rws_;
-        int idx_;
-      };
+        getstream getter(uint idx = 0);
 
-      explicit rows(sqlite3_stmt* stmt);
-
-      int data_count() const;
-      int column_type(int idx) const;
-
-      int column_bytes(int idx) const;
-
-      template <class T> T get(int idx) const {
-        return get(idx, T());
-      }
-
-      template <class... Ts>
-      std::tuple<Ts...> get_columns(typename convert<Ts>::to_int... idxs) const {
-        return std::make_tuple(get(idxs, Ts())...);
-      }
-
-      getstream getter(int idx = 0);
-
-     private:
-      int get(int idx, int) const;
-      double get(int idx, double) const;
-      long long int get(int idx, long long int) const;
-      char const* get(int idx, char const*) const;
-      std::string get(int idx, std::string) const;
-      void const* get(int idx, void const*) const;
-      null_type get(int idx, null_type) const;
-
-     private:
-      sqlite3_stmt* stmt_;
+    private:
+        sqlite3_stmt* stmt_;
     };
 
-    class query_iterator
-      : public std::iterator<std::input_iterator_tag, rows>
+    class query_iterator : public std::iterator<std::input_iterator_tag, rows>
     {
-     public:
-      query_iterator();
-      explicit query_iterator(query* cmd);
+    public:
+        query_iterator();
+        explicit query_iterator(query* cmd);
 
-      bool operator==(query_iterator const&) const;
-      bool operator!=(query_iterator const&) const;
+        bool operator==(query_iterator const&) const;
+        bool operator!=(query_iterator const&) const;
+        query_iterator& operator++();
+        value_type operator*() const;
+        inline bmcl::Option<Error> error() const { return rc_; }
 
-      query_iterator& operator++();
-
-      value_type operator*() const;
-
-     private:
-      query* cmd_;
-      int rc_;
+    private:
+        query* cmd_;
+        bool  isDone_;
+        bmcl::Option<Error> rc_;
     };
 
-    explicit query(database& db, char const* stmt = nullptr);
+    explicit query(database& db, bmcl::StringView stmt = nullptr);
 
-    int column_count() const;
+    uint column_count() const;
 
-    char const* column_name(int idx) const;
-    char const* column_decltype(int idx) const;
+    char const* column_name(uint idx) const;
+    char const* column_decltype(uint idx) const;
 
     using iterator = query_iterator;
 
     iterator begin();
     iterator end();
-  };
+};
 
-  class transaction : noncopyable
-  {
-   public:
+template<> int query::rows::get<int>(uint idx) const;
+template<> int64_t query::rows::get<int64_t>(uint idx) const;
+template<> double query::rows::get<double>(uint idx) const;
+template<> std::string query::rows::get<std::string>(uint idx) const;
+template<> const char* query::rows::get<const char*>(uint idx) const;
+template<> bmcl::Bytes query::rows::get<bmcl::Bytes>(uint idx) const;
+
+extern template int query::rows::get<int>(uint idx) const;
+extern template int64_t query::rows::get<int64_t>(uint idx) const;
+extern template double query::rows::get<double>(uint idx) const;
+extern template std::string query::rows::get<std::string>(uint idx) const;
+extern template const char* query::rows::get<const char*>(uint idx) const;
+extern template bmcl::Bytes query::rows::get<bmcl::Bytes>(uint idx) const;
+
+class transaction : noncopyable
+{
+public:
     explicit transaction(database& db, bool fcommit = false, bool freserve = false);
     ~transaction() noexcept(false);
 
-    int commit();
-    int rollback();
+    bmcl::Option<Error> commit();
+    bmcl::Option<Error> rollback();
 
-   private:
+private:
     database* db_;
     bool fcommit_;
-  };
+};
 
 } // namespace sqlite3pp
-
-#endif

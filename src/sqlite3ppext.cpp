@@ -24,6 +24,7 @@
 
 #include <cstring>
 
+#include "sqlite3.h"
 #include "sqlite3ppext.h"
 
 namespace sqlite3pp
@@ -122,32 +123,22 @@ namespace sqlite3pp
       sqlite3_result_double(ctx_, value);
     }
 
-    void context::result(long long int value)
+    void context::result(int64_t value)
     {
       sqlite3_result_int64(ctx_, value);
     }
 
-    void context::result(std::string const& value)
+    void context::result(bmcl::StringView value, bool fcopy)
     {
-      result(value.c_str(), false);
+      sqlite3_result_text(ctx_, value.data(), static_cast<int>(value.size()), fcopy ? SQLITE_TRANSIENT : SQLITE_STATIC);
     }
 
-    void context::result(char const* value, bool fcopy)
+    void context::result(bmcl::Bytes value, bool fcopy)
     {
-      sqlite3_result_text(ctx_, value, std::strlen(value), fcopy ? SQLITE_TRANSIENT : SQLITE_STATIC);
-    }
-
-    void context::result(void const* value, int n, bool fcopy)
-    {
-      sqlite3_result_blob(ctx_, value, n, fcopy ? SQLITE_TRANSIENT : SQLITE_STATIC );
+      sqlite3_result_blob(ctx_, value.data(), value.size(), fcopy ? SQLITE_TRANSIENT : SQLITE_STATIC );
     }
 
     void context::result()
-    {
-      sqlite3_result_null(ctx_);
-    }
-
-    void context::result(null_type)
     {
       sqlite3_result_null(ctx_);
     }
@@ -159,7 +150,7 @@ namespace sqlite3pp
 
     void context::result_error(char const* msg)
     {
-      sqlite3_result_error(ctx_, msg, std::strlen(msg));
+      sqlite3_result_error(ctx_, msg, static_cast<int>(std::strlen(msg)));
     }
 
     void* context::aggregate_data(int size)

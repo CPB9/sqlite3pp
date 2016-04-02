@@ -79,25 +79,25 @@ namespace sqlite3pp
 
     class context : noncopyable
     {
-     public:
+    public:
       explicit context(sqlite3_context* ctx, int nargs = 0, sqlite3_value** values = nullptr);
 
       int args_count() const;
       int args_bytes(int idx) const;
       int args_type(int idx) const;
 
-      template <class T> T get(int idx) const {
+      template <class T> T get(int idx) const
+      {
         return get(idx, T());
       }
 
       void result(int value);
       void result(double value);
-      void result(long long int value);
-      void result(std::string const& value);
-      void result(char const* value, bool fcopy);
-      void result(void const* value, int n, bool fcopy);
-      void result();
+      void result(int64_t value);
+      void result(bmcl::StringView value, bool fcopy);
+      void result(bmcl::Bytes, bool fcopy);
       void result(null_type);
+      void result();
       void result_copy(int idx);
       void result_error(char const* msg);
 
