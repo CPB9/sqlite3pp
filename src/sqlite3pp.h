@@ -33,6 +33,7 @@
 #include <iterator>
 #include <string>
 #include <tuple>
+#include <cassert>
 #include "bmcl/Option.h"
 #include "bmcl/Result.h"
 #include "bmcl/StringView.h"
@@ -112,7 +113,7 @@ public:
     using busy_handler = std::function<int(int)>;
     using commit_handler = std::function<int()>;
     using rollback_handler = std::function<void()>;
-    using update_handler = std::function<void (int, char const*, char const*, int64_t)>;
+    using update_handler = std::function<void (int, char const*, char const*, long long int)>;
     using authorize_handler = std::function<int (int, char const*, char const*, char const*, char const*)>;
 
     explicit database();
