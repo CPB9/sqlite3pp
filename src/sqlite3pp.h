@@ -217,7 +217,7 @@ public:
         template <class T>
         bindstream& operator << (T value)
         {
-            auto rс = cmd_.bind(idx_, value);
+            auto rc = cmd_.bind(idx_, value);
             if (rc.isSome())
             {
                 assert(false);
