@@ -51,7 +51,7 @@ void rollback_hook_impl(void* p)
     (*h)();
 }
 
-void update_hook_impl(void* p, int opcode, char const* dbname, char const* tablename, int64_t rowid)
+void update_hook_impl(void* p, int opcode, char const* dbname, char const* tablename, long long int rowid)
 {
     auto h = static_cast<database::update_handler*>(p);
     (*h)(opcode, dbname, tablename, rowid);
