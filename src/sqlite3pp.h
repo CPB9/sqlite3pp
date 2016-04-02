@@ -94,8 +94,8 @@ protected:
     noncopyable() = default;
     ~noncopyable() = default;
 
-    noncopyable(noncopyable&&) = default;
-    noncopyable& operator=(noncopyable&&) = default;
+//     noncopyable(noncopyable&&) = default;
+//     noncopyable& operator=(noncopyable&&) = default;
 
     noncopyable(noncopyable const&) = delete;
     noncopyable& operator=(noncopyable const&) = delete;
@@ -217,8 +217,8 @@ public:
         template <class T>
         bindstream& operator << (T value)
         {
-            auto rñ = cmd_.bind(idx_, value);
-            if (rñ.isSome())
+            auto rÑ = cmd_.bind(idx_, value);
+            if (rc.isSome())
             {
                 assert(false);
                 throw database_error(cmd_.db_);
@@ -333,7 +333,7 @@ class transaction : noncopyable
 {
 public:
     explicit transaction(database& db, bool fcommit = false, bool freserve = false);
-    ~transaction() noexcept(false);
+    ~transaction();
 
     bmcl::Option<Error> commit();
     bmcl::Option<Error> rollback();

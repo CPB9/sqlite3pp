@@ -595,7 +595,7 @@ transaction::transaction(database& db, bool fcommit, bool freserve) : db_(&db), 
     }
 }
 
-transaction::~transaction() noexcept(false)
+transaction::~transaction()
 {
     if (!db_)
         return;
