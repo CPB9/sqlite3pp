@@ -51,12 +51,11 @@ namespace ext
 }
 
 template <class T>
-struct convert {
+struct convert
+{
     using to_uint = unsigned int;
 };
 
-class null_type {};
-extern null_type ignore;
 typedef unsigned int uint;
 
 typedef int Error;

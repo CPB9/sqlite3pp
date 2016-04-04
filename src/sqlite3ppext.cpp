@@ -135,10 +135,10 @@ namespace sqlite3pp
 
     void context::result(bmcl::Bytes value, bool fcopy)
     {
-      sqlite3_result_blob(ctx_, value.data(), value.size(), fcopy ? SQLITE_TRANSIENT : SQLITE_STATIC );
+      sqlite3_result_blob(ctx_, value.data(), static_cast<int>(value.size()), fcopy ? SQLITE_TRANSIENT : SQLITE_STATIC );
     }
 
-    void context::result()
+    void context::result(nullptr_t)
     {
       sqlite3_result_null(ctx_);
     }

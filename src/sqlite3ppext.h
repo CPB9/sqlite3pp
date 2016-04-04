@@ -96,8 +96,7 @@ namespace sqlite3pp
       void result(int64_t value);
       void result(bmcl::StringView value, bool fcopy);
       void result(bmcl::Bytes, bool fcopy);
-      void result(null_type);
-      void result();
+      void result(nullptr_t);
       void result_copy(int idx);
       void result_error(char const* msg);
 
