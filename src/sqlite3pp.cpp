@@ -66,37 +66,37 @@ int authorizer_impl(void* p, int evcode, char const* p1, char const* p2, char co
 } // namespace
 
 template<>
-int query::rows::get<int>(uint idx) const
+int selecter::rows::get<int>(uint idx) const
 {
     return sqlite3_column_int(stmt_, idx);
 }
 
 template<>
-int64_t query::rows::get<int64_t>(uint idx) const
+int64_t selecter::rows::get<int64_t>(uint idx) const
 {
     return sqlite3_column_int64(stmt_, idx);
 }
 
 template<>
-double query::rows::get<double>(uint idx) const
+double selecter::rows::get<double>(uint idx) const
 {
     return sqlite3_column_double(stmt_, idx);
 }
 
 template<>
-const char* query::rows::get<const char*>(uint idx) const
+const char* selecter::rows::get<const char*>(uint idx) const
 {
     return reinterpret_cast<const char*>(sqlite3_column_text(stmt_, idx));
 }
 
 template<>
-std::string query::rows::get<std::string>(uint idx) const
+std::string selecter::rows::get<std::string>(uint idx) const
 {
     return get<const char*>(idx);
 }
 
 template<>
-bmcl::Bytes query::rows::get<bmcl::Bytes>(uint idx) const
+bmcl::Bytes selecter::rows::get<bmcl::Bytes>(uint idx) const
 {
     const void* p = sqlite3_column_blob(stmt_, idx);
     int size = sqlite3_column_bytes(stmt_, idx);
@@ -112,12 +112,18 @@ database::database() : db_(nullptr)
 {
 }
 
-database::database(bmcl::StringView db, uint flags, bmcl::StringView vfs) : db_(nullptr)
+database::database(const char* dbname, uint flags, const char* vfs)
 {
-    if (db.isEmpty())
-        return;
+    auto r = connect(dbname, flags, vfs);
+    if (r.isSome())
+    {
+        assert(false);
+    }
+}
 
-    auto r = connect(db.data(), flags, vfs.data());
+database::database(const std::string& dbname, uint flags, const std::string& vfs)
+{
+    auto r = connect(dbname, flags, vfs);
     if (r.isSome())
     {
         assert(false);
@@ -161,11 +167,16 @@ static inline bmcl::Option<Error> sqlite_call(int r)
     return r;
 }
 
-bmcl::Option<Error> database::connect(bmcl::StringView dbname, uint flags, bmcl::StringView vfs)
+bmcl::Option<Error> database::connect(const char* dbname, uint flags, const char* vfs)
 {
     disconnect();
-    assert(!dbname.isEmpty());
-    return sqlite_call(sqlite3_open_v2(dbname.data(), &db_, flags, vfs.data()));
+    assert(dbname);
+    return sqlite_call(sqlite3_open_v2(dbname, &db_, flags, vfs));
+}
+
+bmcl::Option<Error> database::connect(const std::string& dbname, uint flags, const std::string& vfs)
+{
+    return connect(dbname.empty() ? nullptr : dbname.c_str(), flags, vfs.empty() ? nullptr : vfs.c_str());
 }
 
 bmcl::Option<Error> database::disconnect()
@@ -179,14 +190,24 @@ bmcl::Option<Error> database::disconnect()
     return r;
 }
 
-bmcl::Option<Error> database::attach(bmcl::StringView db, bmcl::StringView name)
+bmcl::Option<Error> database::attach(const char* db, const char* name)
 {
-    return executef("ATTACH '%q' AS '%q'", db.data(), name.data());
+    return executef("ATTACH '%q' AS '%q'", db, name);
 }
 
-bmcl::Option<Error> database::detach(bmcl::StringView name)
+bmcl::Option<Error> database::attach(const std::string& db, const std::string& name)
 {
-    return executef("DETACH '%q'", name.data());
+    return attach(db.empty() ? nullptr : db.c_str(), name.empty() ? nullptr : name.c_str());
+}
+
+bmcl::Option<Error> database::detach(const char* name)
+{
+    return executef("DETACH '%q'", name);
+}
+
+bmcl::Option<Error> database::detach(const std::string& name)
+{
+    return detach(name.empty() ? nullptr : name.c_str());
 }
 
 void database::set_busy_handler(busy_handler h)
@@ -252,16 +273,21 @@ char const* database::error_msg() const
     return sqlite3_errmsg(db_);
 }
 
-bmcl::Option<Error> database::execute(bmcl::StringView sql)
+bmcl::Option<Error> database::execute(const char* sql)
 {
-    return sqlite_call(sqlite3_exec(db_, sql.data(), 0, 0, 0));
+    return sqlite_call(sqlite3_exec(db_, sql, 0, 0, 0));
 }
 
-bmcl::Option<Error> database::executef(bmcl::StringView sql, ...)
+bmcl::Option<Error> database::execute(const std::string& sql)
+{
+    return execute(sql.c_str());
+}
+
+bmcl::Option<Error> database::executef(const char* sql, ...)
 {
     va_list ap;
     va_start(ap, sql);
-    auto ptr = sqlite3_vmprintf(sql.data(), ap);
+    auto ptr = sqlite3_vmprintf(sql, ap);
     assert(ptr);
     va_end(ap);
     auto r = execute(ptr);
@@ -274,11 +300,11 @@ bmcl::Option<Error> database::set_busy_timeout(std::chrono::milliseconds timeout
     return sqlite_call(sqlite3_busy_timeout(db_, static_cast<int>(timeout.count())));
 }
 
-statement::statement(database& db, bmcl::StringView stmt) : db_(db), stmt_(nullptr), tail_(nullptr)
+statement::statement(database& db, bmcl::StringView stmt) : db_(db), stmt_(nullptr)
 {
     if (stmt.isEmpty())
         return;
-    auto r = prepare(stmt);
+    auto r = prepare(stmt, nullptr);
     if (r.isSome())
     {
         assert(false);
@@ -295,17 +321,24 @@ statement::~statement()
     }
 }
 
-bmcl::Option<Error> statement::prepare(bmcl::StringView stmt)
+bmcl::Option<Error> statement::prepare(bmcl::StringView stmt, bmcl::StringView* left)
 {
     auto r = finish();
     if (r.isSome())
+    {
+        if (left) *left = stmt;
         return r;
-    return prepare_impl(stmt);
+    }
+    return prepare_impl(stmt, left);
 }
 
-bmcl::Option<Error> statement::prepare_impl(bmcl::StringView stmt)
+bmcl::Option<Error> statement::prepare_impl(bmcl::StringView stmt, bmcl::StringView* left)
 {
-    return sqlite_call(sqlite3_prepare(db_.db_, stmt.data(), static_cast<int>(stmt.size()), &stmt_, &tail_));
+    const char* tail = nullptr;
+    auto r = sqlite_call(sqlite3_prepare_v2(db_.db_, stmt.data(), static_cast<int>(stmt.size()), &stmt_, &tail));
+    if (left)
+        *left = bmcl::StringView(tail, stmt.end());
+    return r;
 }
 
 bmcl::Option<Error> statement::finish()
@@ -315,7 +348,6 @@ bmcl::Option<Error> statement::finish()
 
     auto rc = finish_impl(stmt_);
     stmt_ = nullptr;
-    tail_ = nullptr;
     return rc;
 }
 
@@ -335,9 +367,19 @@ bmcl::Result<bool, Error> statement::step()
     return r;
 }
 
+const char* statement::sql() const
+{
+    return sqlite3_sql(stmt_);
+}
+
 bmcl::Option<Error> statement::reset()
 {
     return sqlite_call(sqlite3_reset(stmt_));
+}
+
+bmcl::Option<Error> statement::clear_bindings()
+{
+    return sqlite_call(sqlite3_clear_bindings(stmt_));
 }
 
 bmcl::Option<Error> statement::bind(uint idx, int value)
@@ -362,157 +404,239 @@ bmcl::Option<Error> statement::bind(uint idx, bmcl::StringView value, copy_seman
 
 bmcl::Option<Error> statement::bind(uint idx, bmcl::Bytes value, copy_semantic fcopy)
 {
-    return sqlite_call(sqlite3_bind_blob(stmt_, idx, value.data(), value.size(), fcopy == copy ? SQLITE_TRANSIENT : SQLITE_STATIC ));
+    return sqlite_call(sqlite3_bind_blob(stmt_, idx, value.data(), static_cast<int>(value.size()), fcopy == copy ? SQLITE_TRANSIENT : SQLITE_STATIC ));
 }
 
-bmcl::Option<Error> statement::bind(uint idx, null_type)
-{
-    return bind(idx);
-}
-
-bmcl::Option<Error> statement::bind(uint idx)
+bmcl::Option<Error> statement::bind(uint idx, nullptr_t)
 {
     return sqlite_call(sqlite3_bind_null(stmt_, idx));
 }
 
-bmcl::Option<Error> statement::bind(bmcl::StringView name, int value)
+bmcl::Option<Error> statement::bind(const char* name, int value)
 {
-    auto idx = sqlite3_bind_parameter_index(stmt_, name.data());
-    return bind(idx, value);
+    return bind(sqlite3_bind_parameter_index(stmt_, name), value);
 }
 
-bmcl::Option<Error> statement::bind(bmcl::StringView name, double value)
+bmcl::Option<Error> statement::bind(const std::string& name, int value)
 {
-    auto idx = sqlite3_bind_parameter_index(stmt_, name.data());
-    return bind(idx, value);
+    return bind(name.c_str(), value);
 }
 
-bmcl::Option<Error> statement::bind(bmcl::StringView name, int64_t value)
+bmcl::Option<Error> statement::bind(const char* name, double value)
 {
-    auto idx = sqlite3_bind_parameter_index(stmt_, name.data());
-    return bind(idx, value);
+    return bind(sqlite3_bind_parameter_index(stmt_, name), value);
 }
 
-bmcl::Option<Error> statement::bind(bmcl::StringView name, bmcl::StringView value, copy_semantic fcopy)
+bmcl::Option<Error> statement::bind(const std::string& name, double value)
 {
-    auto idx = sqlite3_bind_parameter_index(stmt_, name.data());
-    return bind(idx, value, fcopy);
+    return bind(name.c_str(), value);
 }
 
-bmcl::Option<Error> statement::bind(bmcl::StringView name, bmcl::Bytes value, copy_semantic fcopy)
+bmcl::Option<Error> statement::bind(const char* name, int64_t value)
 {
-    auto idx = sqlite3_bind_parameter_index(stmt_, name.data());
-    return bind(idx, value, fcopy);
+    return bind(sqlite3_bind_parameter_index(stmt_, name), value);
 }
 
-bmcl::Option<Error> statement::bind(bmcl::StringView name, null_type)
+bmcl::Option<Error> statement::bind(const std::string& name, int64_t value)
 {
-    return bind(name);
+    return bind(name.c_str(), value);
 }
 
-bmcl::Option<Error> statement::bind(bmcl::StringView name)
+bmcl::Option<Error> statement::bind(const char* name, bmcl::StringView value, copy_semantic fcopy)
 {
-    auto idx = sqlite3_bind_parameter_index(stmt_, name.data());
-    return bind(idx);
+    return bind(sqlite3_bind_parameter_index(stmt_, name), value, fcopy);
 }
 
-command::bindstream::bindstream(command& cmd, uint idx) : cmd_(cmd), idx_(idx)
+bmcl::Option<Error> statement::bind(const std::string& name, bmcl::StringView value, copy_semantic fcopy)
+{
+    return bind(name.c_str(), value, fcopy);
+}
+
+bmcl::Option<Error> statement::bind(const char* name, bmcl::Bytes value, copy_semantic fcopy)
+{
+    return bind(sqlite3_bind_parameter_index(stmt_, name), value, fcopy);
+}
+
+bmcl::Option<Error> statement::bind(const std::string& name, bmcl::Bytes value, copy_semantic fcopy)
+{
+    return bind(name.c_str(), value, fcopy);
+}
+
+bmcl::Option<Error> statement::bind(const char* name, nullptr_t)
+{
+    return bind(sqlite3_bind_parameter_index(stmt_, name), nullptr);
+}
+
+bmcl::Option<Error> statement::bind(const std::string& name, nullptr_t)
+{
+    return bind(name.c_str(), nullptr);
+}
+
+statement::bindstream::bindstream(statement& stmt, uint idx) : stmt_(stmt), idx_(idx)
 {
 }
 
-command::bindstream& command::bindstream::operator<< (bmcl::StringView value)
+statement::bindstream& statement::bindstream::operator<< (bmcl::StringView value)
 {
-    auto r = cmd_.bind(idx_, value, copy);
+    auto r = stmt_.bind(idx_, value, copy);
     if (r.isSome())
     {
         assert(false);
-        throw database_error(cmd_.db_);
+        throw database_error(stmt_.db_);
     }
     ++idx_;
     return *this;
 }
 
-command::command(database& db, bmcl::StringView stmt) : statement(db, stmt)
-{
-}
-
-command::bindstream command::binder(uint idx)
+statement::bindstream statement::binder(uint idx)
 {
     return bindstream(*this, idx);
 }
 
-bmcl::Result<bool, Error> command::execute()
+batch::batch(database& db) : db_(db), state_(nullptr), orig_(nullptr)
 {
-    return step();
 }
 
-bmcl::Option<Error> command::execute_all()
+batch::batch(database& db, bmcl::StringView stmt, copy_semantic fcopy) : batch(db)
 {
-    auto rc = execute();
-    if (rc.isErr())
-        return rc.unwrapErr();
+    auto r = prepare(stmt, fcopy);
+}
 
-    const char* sql = tail_;
+void batch::reset()
+{
+    state_ = orig_;
+}
 
-    while (std::strlen(sql) > 0)
-    { // sqlite3_complete() is broken.
-        sqlite3_stmt* old_stmt = stmt_;
-        auto r = prepare_impl(sql);
+bmcl::Option<Error> batch::prepare(bmcl::StringView stmt, copy_semantic fcopy)
+{
+    if (!stmt.isEmpty() && fcopy)
+    {
+        data_ = stmt.toStdString();
+        orig_ = data_.unwrap();
+    }
+    else
+    {
+        orig_ = stmt;
+    }
+    state_ = orig_;
+    return SQLITE_OK;
+}
+
+bmcl::Result<bool, Error> batch::execute_next()
+{
+    state_ = state_.ltrim();
+    if (state_.isEmpty())
+        return false;
+
+    statement stmt(db_);
+    bmcl::StringView view = state_;
+
+    {
+        auto r = stmt.prepare(state_, &view);
         if (r.isSome())
-            return r;
-
-        r = sqlite_call(sqlite3_transfer_bindings(old_stmt, stmt_));
-        if (r.isSome())
-            return r;
-
-        r = finish_impl(old_stmt);
-        if (r.isSome())
-            return r;
-
-        rc = execute();
-        if (rc.isErr())
-            return rc.unwrapErr();
-
-        sql = tail_;
+            return r.unwrap();
     }
 
+    {
+        auto r = stmt.step();
+        if (r.isErr())
+            return r.unwrapErr();
+    }
+
+    {
+        auto r = stmt.finish();
+        if (r.isSome())
+            return r.unwrap();
+    }
+
+    state_ = view;
+    return !state_.isEmpty();
+}
+
+bmcl::Option<Error> batch::execute_all()
+{
+    bool hasSmth;
+    do
+    {
+        auto r = execute_next();
+        if (r.isErr())
+            return r.unwrapErr();
+        hasSmth = r.unwrap();
+    } while (hasSmth);
     return bmcl::None;
 }
 
+bmcl::StringView batch::state() const
+{
+    return state_;
+}
 
-query::rows::getstream::getstream(rows* rws, uint idx) : rws_(rws), idx_(idx)
+// bmcl::Option<Error> command::execute_all()
+// {
+//     auto rc = execute();
+//     if (rc.isErr())
+//         return rc.unwrapErr();
+// 
+//     bmcl::StringView sql = tail_;
+// 
+//     while (!sql.isEmpty())
+//     { // sqlite3_complete() is broken.
+//         sqlite3_stmt* old_stmt = stmt_;
+//         auto r = prepare_impl(sql);
+//         if (r.isSome())
+//             return r;
+// 
+//         r = sqlite_call(sqlite3_transfer_bindings(old_stmt, stmt_));
+//         if (r.isSome())
+//             return r;
+// 
+//         r = finish_impl(old_stmt);
+//         if (r.isSome())
+//             return r;
+// 
+//         rc = execute();
+//         if (rc.isErr())
+//             return rc.unwrapErr();
+// 
+//         sql = tail_;
+//     }
+// 
+//     return bmcl::None;
+// }
+
+selecter::rows::getstream::getstream(rows* rws, uint idx) : rws_(rws), idx_(idx)
 {
 }
 
-query::rows::rows(sqlite3_stmt* stmt) : stmt_(stmt)
+selecter::rows::rows(sqlite3_stmt* stmt) : stmt_(stmt)
 {
 }
 
-uint query::rows::data_count() const
+uint selecter::rows::data_count() const
 {
     return static_cast<uint>(sqlite3_data_count(stmt_));
 }
 
-data_type query::rows::column_type(uint idx) const
+data_type selecter::rows::column_type(uint idx) const
 {
     return static_cast<data_type>(sqlite3_column_type(stmt_, idx));
 }
 
-uint query::rows::column_bytes(uint idx) const
+uint selecter::rows::column_bytes(uint idx) const
 {
     return static_cast<uint>(sqlite3_column_bytes(stmt_, idx));
 }
 
-query::rows::getstream query::rows::getter(uint idx)
+selecter::rows::getstream selecter::rows::getter(uint idx)
 {
     return getstream(this, idx);
 }
 
-query::query_iterator::query_iterator() : cmd_(nullptr), isDone_(true)
+selecter::query_iterator::query_iterator() : cmd_(nullptr), isDone_(true)
 {
 }
 
-query::query_iterator::query_iterator(query* cmd) : cmd_(cmd)
+selecter::query_iterator::query_iterator(selecter* cmd) : cmd_(cmd)
 {
     auto r = cmd_->step();
     if (r.isErr())
@@ -525,17 +649,17 @@ query::query_iterator::query_iterator(query* cmd) : cmd_(cmd)
     isDone_ = r.unwrap();
 }
 
-bool query::query_iterator::operator==(query::query_iterator const& other) const
+bool selecter::query_iterator::operator==(selecter::query_iterator const& other) const
 {
     return isDone_ == other.isDone_;
 }
 
-bool query::query_iterator::operator!=(query::query_iterator const& other) const
+bool selecter::query_iterator::operator!=(selecter::query_iterator const& other) const
 {
     return isDone_ != other.isDone_;
 }
 
-query::query_iterator& query::query_iterator::operator++()
+selecter::query_iterator& selecter::query_iterator::operator++()
 {
     auto r = cmd_->step();
     if (r.isErr())
@@ -549,37 +673,41 @@ query::query_iterator& query::query_iterator::operator++()
     return *this;
 }
 
-query::query_iterator::value_type query::query_iterator::operator*() const
+selecter::query_iterator::value_type selecter::query_iterator::operator*() const
 {
     return rows(cmd_->stmt_);
 }
 
-query::query(database& db, bmcl::StringView stmt) : statement(db, stmt)
+selecter::selecter(database& db, bmcl::StringView stmt) : statement(db, stmt)
 {
 }
 
-uint query::column_count() const
+selecter::~selecter()
+{
+}
+
+uint selecter::column_count() const
 {
     return sqlite3_column_count(stmt_);
 }
 
-char const* query::column_name(uint idx) const
+char const* selecter::column_name(uint idx) const
 {
     return sqlite3_column_name(stmt_, idx);
 }
 
-char const* query::column_decltype(uint idx) const
+char const* selecter::column_decltype(uint idx) const
 {
     return sqlite3_column_decltype(stmt_, idx);
 }
 
 
-query::iterator query::begin()
+selecter::iterator selecter::begin()
 {
     return query_iterator(this);
 }
 
-query::iterator query::end()
+selecter::iterator selecter::end()
 {
     return query_iterator();
 }
@@ -622,7 +750,7 @@ bmcl::Option<Error> transaction::rollback()
 }
 
 
-database_error::database_error(bmcl::StringView msg) : std::runtime_error(msg.data())
+database_error::database_error(bmcl::StringView msg) : std::runtime_error(msg.toStdString())
 {
 }
 

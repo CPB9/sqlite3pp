@@ -116,18 +116,22 @@ public:
     using authorize_handler = std::function<int (int, char const*, char const*, char const*, char const*)>;
 
     explicit database();
-    explicit database(bmcl::StringView db, uint flags = OPEN_READWRITE | OPEN_CREATE, bmcl::StringView vfs = nullptr);
+    database(const char* dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const char* vfs = nullptr);
+    database(const std::string& dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const std::string& vfs = std::string());
 
     database(database&& db);
     database& operator=(database&& db);
 
     ~database();
 
-    bmcl::Option<Error> connect(bmcl::StringView dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, bmcl::StringView vfs = nullptr);
+    bmcl::Option<Error> connect(const char* dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const char* vfs = nullptr);
+    bmcl::Option<Error> connect(const std::string& dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const std::string& vfs = std::string());
     bmcl::Option<Error> disconnect();
 
-    bmcl::Option<Error> attach(bmcl::StringView dbname, bmcl::StringView name);
-    bmcl::Option<Error> detach(bmcl::StringView name);
+    bmcl::Option<Error> attach(const char* dbname, const char* name);
+    bmcl::Option<Error> attach(const std::string& dbname, const std::string& name);
+    bmcl::Option<Error> detach(const char* name);
+    bmcl::Option<Error> detach(const std::string& name);
 
     bmcl::Option<uint64_t> last_insert_rowid() const;
 
@@ -138,8 +142,9 @@ public:
     Error error_code() const;
     char const* error_msg() const;
 
-    bmcl::Option<Error> execute(bmcl::StringView sql);
-    bmcl::Option<Error> executef(bmcl::StringView sql, ...);
+    bmcl::Option<Error> execute(const char* sql);
+    bmcl::Option<Error> execute(const std::string& sql);
+    bmcl::Option<Error> executef(const char* sql, ...);
 
     bmcl::Option<Error> set_busy_timeout(std::chrono::milliseconds timeout);
 
@@ -162,87 +167,101 @@ private:
 class database_error : public std::runtime_error
 {
 public:
-    explicit database_error(bmcl::StringView msg);
+    explicit database_error(bmcl::StringView msg); //+
     explicit database_error(database& db);
 };
 
-  enum copy_semantic { copy, nocopy };
+enum copy_semantic { copy, nocopy };
 
 class statement : noncopyable
 {
 public:
-    bmcl::Option<Error> prepare(bmcl::StringView stmt);
+    statement(database& db, bmcl::StringView stmt = nullptr);
+    virtual ~statement();
+
+    bmcl::Option<Error> prepare(bmcl::StringView stmt, bmcl::StringView* left);
+    bmcl::Result<bool, Error> step();
+    bmcl::Option<Error> reset();
+    bmcl::Option<Error> clear_bindings();
     bmcl::Option<Error> finish();
+    const char* sql() const;
 
     bmcl::Option<Error> bind(uint idx, int value);
     bmcl::Option<Error> bind(uint idx, double value);
     bmcl::Option<Error> bind(uint idx, int64_t value);
     bmcl::Option<Error> bind(uint idx, bmcl::StringView value, copy_semantic fcopy);
     bmcl::Option<Error> bind(uint idx, bmcl::Bytes value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, null_type);
-    bmcl::Option<Error> bind(uint idx);
+    bmcl::Option<Error> bind(uint idx, nullptr_t);
 
-    bmcl::Option<Error> bind(bmcl::StringView name, int value);
-    bmcl::Option<Error> bind(bmcl::StringView name,  double value);
-    bmcl::Option<Error> bind(bmcl::StringView name, int64_t value);
-    bmcl::Option<Error> bind(bmcl::StringView name, bmcl::StringView value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(bmcl::StringView name, bmcl::Bytes value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(bmcl::StringView name, null_type);
-    bmcl::Option<Error> bind(bmcl::StringView name);
+    bmcl::Option<Error> bind(const char* name,          int value);
+    bmcl::Option<Error> bind(const std::string& name,   int value);
+    bmcl::Option<Error> bind(const char* name,          double value);
+    bmcl::Option<Error> bind(const std::string& name,   double value);
+    bmcl::Option<Error> bind(const char* name,          int64_t value);
+    bmcl::Option<Error> bind(const std::string& name,   int64_t value);
+    bmcl::Option<Error> bind(const char* name,          bmcl::StringView value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(const std::string& name,   bmcl::StringView value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(const char* name,          bmcl::Bytes value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(const std::string& name,   bmcl::Bytes value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(const char* name,          nullptr_t);
+    bmcl::Option<Error> bind(const std::string& name,   nullptr_t);
 
-    bmcl::Result<bool, Error> step();
-    bmcl::Option<Error> reset();
-
-protected:
-    explicit statement(database& db, bmcl::StringView stmt = nullptr);
-    ~statement();
-
-    bmcl::Option<Error> prepare_impl(bmcl::StringView stmt);
-    bmcl::Option<Error> finish_impl(sqlite3_stmt* stmt);
-
-protected:
-    database& db_;
-    sqlite3_stmt* stmt_;
-    char const* tail_;
-};
-
-class command : public statement
-{
-public:
     class bindstream
     {
     public:
-        bindstream(command& cmd, uint idx);
+        bindstream(statement& stmt, uint idx);
 
         template <class T>
         bindstream& operator << (T value)
         {
-            auto rc = cmd_.bind(idx_, value);
+            auto rc = stmt_.bind(idx_, value);
             if (rc.isSome())
             {
                 assert(false);
-                throw database_error(cmd_.db_);
+                throw database_error(stmt_.db_);
             }
             ++idx_;
             return *this;
         }
         bindstream& operator << (bmcl::StringView value);
     private:
-        command& cmd_;
+        statement& stmt_;
         uint idx_;
     };
-
-    explicit command(database& db, bmcl::StringView stmt = nullptr);
-
     bindstream binder(uint idx = 1);
 
-    bmcl::Result<bool, Error> execute();
-    bmcl::Option<Error> execute_all();
+protected:
+    bmcl::Option<Error> prepare_impl(bmcl::StringView stmt, bmcl::StringView* left);
+    bmcl::Option<Error> finish_impl(sqlite3_stmt* stmt);
+
+protected:
+    database& db_;
+    sqlite3_stmt* stmt_;
 };
 
-class query : public statement
+class batch
 {
 public:
+    explicit batch(database& db);
+    batch(database& db, bmcl::StringView stmt, copy_semantic fcopy);
+    bmcl::Option<Error> prepare(bmcl::StringView stmt, copy_semantic fcopy);
+    void reset();
+    bmcl::Result<bool, Error> execute_next();
+    bmcl::Option<Error> execute_all();
+    bmcl::StringView state() const;
+private:
+    database& db_;
+    bmcl::Option<std::string> data_;
+    bmcl::StringView state_;
+    bmcl::StringView orig_;
+};
+
+class selecter : public statement
+{
+public:
+    explicit selecter(database& db, bmcl::StringView stmt = nullptr);
+    virtual ~selecter();
+
     class rows
     {
     public:
@@ -288,7 +307,7 @@ public:
     {
     public:
         query_iterator();
-        explicit query_iterator(query* cmd);
+        explicit query_iterator(selecter* cmd);
 
         bool operator==(query_iterator const&) const;
         bool operator!=(query_iterator const&) const;
@@ -297,12 +316,10 @@ public:
         inline bmcl::Option<Error> error() const { return rc_; }
 
     private:
-        query* cmd_;
+        selecter* cmd_;
         bool  isDone_;
         bmcl::Option<Error> rc_;
     };
-
-    explicit query(database& db, bmcl::StringView stmt = nullptr);
 
     uint column_count() const;
 
@@ -315,19 +332,26 @@ public:
     iterator end();
 };
 
-template<> int query::rows::get<int>(uint idx) const;
-template<> int64_t query::rows::get<int64_t>(uint idx) const;
-template<> double query::rows::get<double>(uint idx) const;
-template<> std::string query::rows::get<std::string>(uint idx) const;
-template<> const char* query::rows::get<const char*>(uint idx) const;
-template<> bmcl::Bytes query::rows::get<bmcl::Bytes>(uint idx) const;
+class inserter : public statement
+{
+public:
+    explicit inserter(database& db, bmcl::StringView stmt = nullptr);
+    virtual ~inserter();
+};
 
-extern template int query::rows::get<int>(uint idx) const;
-extern template int64_t query::rows::get<int64_t>(uint idx) const;
-extern template double query::rows::get<double>(uint idx) const;
-extern template std::string query::rows::get<std::string>(uint idx) const;
-extern template const char* query::rows::get<const char*>(uint idx) const;
-extern template bmcl::Bytes query::rows::get<bmcl::Bytes>(uint idx) const;
+template<> int selecter::rows::get<int>(uint idx) const;
+template<> int64_t selecter::rows::get<int64_t>(uint idx) const;
+template<> double selecter::rows::get<double>(uint idx) const;
+template<> std::string selecter::rows::get<std::string>(uint idx) const;
+template<> const char* selecter::rows::get<const char*>(uint idx) const;
+template<> bmcl::Bytes selecter::rows::get<bmcl::Bytes>(uint idx) const;
+
+extern template int selecter::rows::get<int>(uint idx) const;
+extern template int64_t selecter::rows::get<int64_t>(uint idx) const;
+extern template double selecter::rows::get<double>(uint idx) const;
+extern template std::string selecter::rows::get<std::string>(uint idx) const;
+extern template const char* selecter::rows::get<const char*>(uint idx) const;
+extern template bmcl::Bytes selecter::rows::get<bmcl::Bytes>(uint idx) const;
 
 class transaction : noncopyable
 {
