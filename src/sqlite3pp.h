@@ -337,6 +337,7 @@ class inserter : public statement
 public:
     explicit inserter(database& db, bmcl::StringView stmt = nullptr);
     virtual ~inserter();
+    bmcl::Result<uint64_t, Error> insert();
 };
 
 template<> int selecter::rows::get<int>(uint idx) const;

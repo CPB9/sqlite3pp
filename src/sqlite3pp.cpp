@@ -712,6 +712,24 @@ selecter::iterator selecter::end()
     return query_iterator();
 }
 
+inserter::inserter(database& db, bmcl::StringView stmt) : statement(db, stmt)
+{
+}
+
+inserter::~inserter()
+{
+}
+
+bmcl::Result<uint64_t, Error> inserter::insert()
+{
+    auto r = step();
+    if (r.isErr())
+        return r.unwrapErr();
+    auto id = db_.last_insert_rowid();
+    if (id.isSome())
+        return id.unwrap();
+    return SQLITE_MISUSE;
+}
 
 transaction::transaction(database& db, bool fcommit, bool freserve) : db_(&db), fcommit_(fcommit)
 {
