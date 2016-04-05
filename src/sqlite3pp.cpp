@@ -755,6 +755,8 @@ transaction::~transaction()
 
 bmcl::Option<Error> transaction::commit()
 {
+    if (!db_)
+        return SQLITE_MISUSE;
     auto db = db_;
     db_ = nullptr;
     return db->execute("COMMIT");
@@ -762,6 +764,8 @@ bmcl::Option<Error> transaction::commit()
 
 bmcl::Option<Error> transaction::rollback()
 {
+    if (!db_)
+        return SQLITE_MISUSE;
     auto db = db_;
     db_ = nullptr;
     return db->execute("ROLLBACK");
