@@ -146,6 +146,9 @@ public:
     bmcl::Option<Error> execute(const std::string& sql);
     bmcl::Option<Error> executef(const char* sql, ...);
 
+    bmcl::Option<Error> commit();
+    bmcl::Option<Error> rollback();
+
     bmcl::Option<Error> set_busy_timeout(std::chrono::milliseconds timeout);
 
     void set_busy_handler(busy_handler h);

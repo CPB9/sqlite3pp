@@ -300,6 +300,16 @@ bmcl::Option<Error> database::set_busy_timeout(std::chrono::milliseconds timeout
     return sqlite_call(sqlite3_busy_timeout(db_, static_cast<int>(timeout.count())));
 }
 
+bmcl::Option<Error> database::commit()
+{
+    return execute("COMMIT");
+}
+
+bmcl::Option<Error> database::rollback()
+{
+    return execute("ROLLBACK");
+}
+
 statement::statement(database& db, bmcl::StringView stmt) : db_(db), stmt_(nullptr)
 {
     if (stmt.isEmpty())
@@ -725,7 +735,7 @@ bmcl::Option<Error> transaction::commit()
         return SQLITE_MISUSE;
     auto db = db_;
     db_ = nullptr;
-    return db->execute("COMMIT");
+    return db->commit();
 }
 
 bmcl::Option<Error> transaction::rollback()
@@ -734,7 +744,7 @@ bmcl::Option<Error> transaction::rollback()
         return SQLITE_MISUSE;
     auto db = db_;
     db_ = nullptr;
-    return db->execute("ROLLBACK");
+    return db->rollback();
 }
 
 database_error::database_error(bmcl::StringView msg) : std::runtime_error(msg.toStdString())
