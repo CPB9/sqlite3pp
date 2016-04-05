@@ -571,39 +571,6 @@ bmcl::StringView batch::state() const
     return state_;
 }
 
-// bmcl::Option<Error> command::execute_all()
-// {
-//     auto rc = execute();
-//     if (rc.isErr())
-//         return rc.unwrapErr();
-// 
-//     bmcl::StringView sql = tail_;
-// 
-//     while (!sql.isEmpty())
-//     { // sqlite3_complete() is broken.
-//         sqlite3_stmt* old_stmt = stmt_;
-//         auto r = prepare_impl(sql);
-//         if (r.isSome())
-//             return r;
-// 
-//         r = sqlite_call(sqlite3_transfer_bindings(old_stmt, stmt_));
-//         if (r.isSome())
-//             return r;
-// 
-//         r = finish_impl(old_stmt);
-//         if (r.isSome())
-//             return r;
-// 
-//         rc = execute();
-//         if (rc.isErr())
-//             return rc.unwrapErr();
-// 
-//         sql = tail_;
-//     }
-// 
-//     return bmcl::None;
-// }
-
 selecter::rows::getstream::getstream(rows* rws, uint idx) : rws_(rws), idx_(idx)
 {
 }
@@ -701,7 +668,6 @@ char const* selecter::column_decltype(uint idx) const
     return sqlite3_column_decltype(stmt_, idx);
 }
 
-
 selecter::iterator selecter::begin()
 {
     return query_iterator(this);
@@ -770,7 +736,6 @@ bmcl::Option<Error> transaction::rollback()
     db_ = nullptr;
     return db->execute("ROLLBACK");
 }
-
 
 database_error::database_error(bmcl::StringView msg) : std::runtime_error(msg.toStdString())
 {
