@@ -103,9 +103,9 @@ bmcl::Bytes selecter::rows::get<bmcl::Bytes>(uint idx) const
     return bmcl::Bytes(reinterpret_cast<const uint8_t*>(p), size);
 }
 
-std::string to_string(Error err)
+const char* to_string(Error err)
 {
-    return sqlite3_errstr(err);
+    return sqlite3_errstr(static_cast<int>(err));
 }
 
 database::database() : db_(nullptr)
@@ -164,7 +164,7 @@ static inline bmcl::Option<Error> sqlite_call(int r)
 {
     if (r == SQLITE_OK)
         return bmcl::None;
-    return r;
+    return static_cast<Error>(r);
 }
 
 bmcl::Option<Error> database::connect(const char* dbname, uint flags, const char* vfs)
@@ -240,7 +240,7 @@ void database::set_authorize_handler(authorize_handler h)
     sqlite3_set_authorizer(db_, ah_ ? authorizer_impl : 0, &ah_);
 }
 
-bmcl::Option<uint64_t> database::last_insert_rowid() const
+bmcl::Option<int64_t> database::last_insert_rowid() const
 {
     int64_t id = sqlite3_last_insert_rowid(db_);
     if (id > 0)
@@ -263,14 +263,9 @@ bmcl::Option<Error> database::enable_extended_result_codes(bool enable)
     return sqlite_call(sqlite3_extended_result_codes(db_, enable ? 1 : 0));
 }
 
-Error database::error_code() const
+const char* database::version()
 {
-    return sqlite3_errcode(db_);
-}
-
-char const* database::error_msg() const
-{
-    return sqlite3_errmsg(db_);
+    return SQLITE_VERSION;
 }
 
 bmcl::Option<Error> database::execute(const char* sql)
@@ -377,6 +372,14 @@ bmcl::Result<bool, Error> statement::step()
     return r;
 }
 
+bmcl::Option<Error> statement::exec()
+{
+    auto r = sqlite3_step(stmt_);
+    if (r == SQLITE_DONE || r == SQLITE_ROW || r == SQLITE_OK)
+        return bmcl::None;
+    return static_cast<Error>(r);
+}
+
 const char* statement::sql() const
 {
     return sqlite3_sql(stmt_);
@@ -390,6 +393,11 @@ bmcl::Option<Error> statement::reset()
 bmcl::Option<Error> statement::clear_bindings()
 {
     return sqlite_call(sqlite3_clear_bindings(stmt_));
+}
+
+bmcl::Option<Error> statement::bind(uint idx, nullptr_t)
+{
+    return sqlite_call(sqlite3_bind_null(stmt_, idx));
 }
 
 bmcl::Option<Error> statement::bind(uint idx, int value)
@@ -409,77 +417,72 @@ bmcl::Option<Error> statement::bind(uint idx, int64_t value)
 
 bmcl::Option<Error> statement::bind(uint idx, bmcl::StringView value, copy_semantic fcopy)
 {
-    return sqlite_call(sqlite3_bind_text(stmt_, idx, value.data(), static_cast<int>(value.size()), fcopy == copy ? SQLITE_TRANSIENT : SQLITE_STATIC ));
+    return sqlite_call(sqlite3_bind_text(stmt_, idx, value.data(), static_cast<int>(value.size()), fcopy == copy ? SQLITE_TRANSIENT : SQLITE_STATIC));
 }
 
 bmcl::Option<Error> statement::bind(uint idx, bmcl::Bytes value, copy_semantic fcopy)
 {
-    return sqlite_call(sqlite3_bind_blob(stmt_, idx, value.data(), static_cast<int>(value.size()), fcopy == copy ? SQLITE_TRANSIENT : SQLITE_STATIC ));
+    return sqlite_call(sqlite3_bind_blob(stmt_, idx, value.data(), static_cast<int>(value.size()), fcopy == copy ? SQLITE_TRANSIENT : SQLITE_STATIC));
 }
 
-bmcl::Option<Error> statement::bind(uint idx, nullptr_t)
+bmcl::Option<Error> statement::bind(uint idx, const char* value, copy_semantic fcopy)
 {
-    return sqlite_call(sqlite3_bind_null(stmt_, idx));
+    return bind(idx, bmcl::StringView(value), fcopy);
 }
 
-bmcl::Option<Error> statement::bind(const char* name, int value)
+bmcl::Option<Error> statement::bind(uint idx, const std::string& value, copy_semantic fcopy)
 {
-    return bind(sqlite3_bind_parameter_index(stmt_, name), value);
+    return bind(idx, bmcl::StringView(value), fcopy);
 }
 
-bmcl::Option<Error> statement::bind(const std::string& name, int value)
+bmcl::Option<Error> statement::bind(uint idx, bmcl::Option<int> value)
 {
-    return bind(name.c_str(), value);
+    if (value.isNone()) return bind(idx, nullptr);
+    return bind(idx, *value);
 }
 
-bmcl::Option<Error> statement::bind(const char* name, double value)
+bmcl::Option<Error> statement::bind(uint idx, bmcl::Option<double> value)
 {
-    return bind(sqlite3_bind_parameter_index(stmt_, name), value);
+    if (value.isNone()) return bind(idx, nullptr);
+    return bind(idx, *value);
 }
 
-bmcl::Option<Error> statement::bind(const std::string& name, double value)
+bmcl::Option<Error> statement::bind(uint idx, bmcl::Option<int64_t> value)
 {
-    return bind(name.c_str(), value);
+    if (value.isNone()) return bind(idx, nullptr);
+    return bind(idx, *value);
 }
 
-bmcl::Option<Error> statement::bind(const char* name, int64_t value)
+bmcl::Option<Error> statement::bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy)
 {
-    return bind(sqlite3_bind_parameter_index(stmt_, name), value);
+    if (value.isNone()) return bind(idx, nullptr);
+    return bind(idx, *value);
 }
 
-bmcl::Option<Error> statement::bind(const std::string& name, int64_t value)
+bmcl::Option<Error> statement::bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy)
 {
-    return bind(name.c_str(), value);
+    if (value.isNone()) return bind(idx, nullptr);
+    return bind(idx, *value, fcopy);
 }
 
-bmcl::Option<Error> statement::bind(const char* name, bmcl::StringView value, copy_semantic fcopy)
+bmcl::Option<Error> statement::bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semantic fcopy)
 {
-    return bind(sqlite3_bind_parameter_index(stmt_, name), value, fcopy);
+    if (value.isNone()) return bind(idx, nullptr);
+    return bind(idx, *value, fcopy);
 }
 
-bmcl::Option<Error> statement::bind(const std::string& name, bmcl::StringView value, copy_semantic fcopy)
+bmcl::Result<uint, Error> statement::bind_index(const char* name)
 {
-    return bind(name.c_str(), value, fcopy);
+    uint r = sqlite3_bind_parameter_index(stmt_, name);
+    if (r == 0) return SQLITE_MISUSE;
+    return r;
 }
 
-bmcl::Option<Error> statement::bind(const char* name, bmcl::Bytes value, copy_semantic fcopy)
+bmcl::Result<uint, Error> statement::bind_index(const std::string& name)
 {
-    return bind(sqlite3_bind_parameter_index(stmt_, name), value, fcopy);
-}
-
-bmcl::Option<Error> statement::bind(const std::string& name, bmcl::Bytes value, copy_semantic fcopy)
-{
-    return bind(name.c_str(), value, fcopy);
-}
-
-bmcl::Option<Error> statement::bind(const char* name, nullptr_t)
-{
-    return bind(sqlite3_bind_parameter_index(stmt_, name), nullptr);
-}
-
-bmcl::Option<Error> statement::bind(const std::string& name, nullptr_t)
-{
-    return bind(name.c_str(), nullptr);
+    uint r = sqlite3_bind_parameter_index(stmt_, name.c_str());
+    if (r == 0) return SQLITE_MISUSE;
+    return r;
 }
 
 statement::bindstream::bindstream(statement& stmt, uint idx) : stmt_(stmt), idx_(idx)
@@ -529,7 +532,7 @@ bmcl::Option<Error> batch::prepare(bmcl::StringView stmt, copy_semantic fcopy)
         orig_ = stmt;
     }
     state_ = orig_;
-    return SQLITE_OK;
+    return bmcl::None;
 }
 
 bmcl::Result<bool, Error> batch::execute_next()
@@ -696,7 +699,7 @@ inserter::~inserter()
 {
 }
 
-bmcl::Result<uint64_t, Error> inserter::insert()
+InsError inserter::insert()
 {
     auto r = step();
     if (r.isErr())
@@ -732,7 +735,7 @@ transaction::~transaction()
 bmcl::Option<Error> transaction::commit()
 {
     if (!db_)
-        return SQLITE_MISUSE;
+        return static_cast<Error>(SQLITE_MISUSE);
     auto db = db_;
     db_ = nullptr;
     return db->commit();
@@ -741,7 +744,7 @@ bmcl::Option<Error> transaction::commit()
 bmcl::Option<Error> transaction::rollback()
 {
     if (!db_)
-        return SQLITE_MISUSE;
+        return static_cast<Error>(SQLITE_MISUSE);
     auto db = db_;
     db_ = nullptr;
     return db->rollback();

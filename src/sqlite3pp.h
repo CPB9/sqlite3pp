@@ -58,8 +58,11 @@ struct convert
 
 typedef unsigned int uint;
 
-typedef int Error;
-std::string to_string(Error);
+enum class Error : int {};
+typedef bmcl::Option<Error> OptError;
+typedef bmcl::Result<int64_t, Error> InsError;
+
+const char* to_string(Error);
 
 enum FileFlags
 {
@@ -133,14 +136,13 @@ public:
     bmcl::Option<Error> detach(const char* name);
     bmcl::Option<Error> detach(const std::string& name);
 
-    bmcl::Option<uint64_t> last_insert_rowid() const;
+    bmcl::Option<int64_t> last_insert_rowid() const;
 
     bmcl::Option<Error> enable_foreign_keys(bool enable = true);
     bmcl::Option<Error> enable_triggers(bool enable = true);
     bmcl::Option<Error> enable_extended_result_codes(bool enable = true);
 
-    Error error_code() const;
-    char const* error_msg() const;
+    static const char* version();
 
     bmcl::Option<Error> execute(const char* sql);
     bmcl::Option<Error> execute(const std::string& sql);
@@ -182,32 +184,46 @@ public:
     statement(database& db, bmcl::StringView stmt = nullptr);
     virtual ~statement();
 
-    bmcl::Option<Error> prepare(bmcl::StringView stmt, bmcl::StringView* left);
+    bmcl::Option<Error> prepare(bmcl::StringView stmt, bmcl::StringView* left = nullptr);
     bmcl::Result<bool, Error> step();
+    bmcl::Option<Error> exec();
     bmcl::Option<Error> reset();
     bmcl::Option<Error> clear_bindings();
     bmcl::Option<Error> finish();
     const char* sql() const;
 
+    bmcl::Result<uint, Error> bind_index(const char* name);
+    bmcl::Result<uint, Error> bind_index(const std::string& name);
+
+    bmcl::Option<Error> bind(uint idx, nullptr_t);
     bmcl::Option<Error> bind(uint idx, int value);
     bmcl::Option<Error> bind(uint idx, double value);
     bmcl::Option<Error> bind(uint idx, int64_t value);
-    bmcl::Option<Error> bind(uint idx, bmcl::StringView value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, bmcl::Bytes value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, nullptr_t);
+    bmcl::Option<Error> bind(uint idx, const char* value, copy_semantic fcopy = copy);
+    bmcl::Option<Error> bind(uint idx, const std::string& value, copy_semantic fcopy = copy);
+    bmcl::Option<Error> bind(uint idx, bmcl::StringView value, copy_semantic fcopy = copy);
+    bmcl::Option<Error> bind(uint idx, bmcl::Bytes value, copy_semantic fcopy = copy);
 
-    bmcl::Option<Error> bind(const char* name,          int value);
-    bmcl::Option<Error> bind(const std::string& name,   int value);
-    bmcl::Option<Error> bind(const char* name,          double value);
-    bmcl::Option<Error> bind(const std::string& name,   double value);
-    bmcl::Option<Error> bind(const char* name,          int64_t value);
-    bmcl::Option<Error> bind(const std::string& name,   int64_t value);
-    bmcl::Option<Error> bind(const char* name,          bmcl::StringView value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(const std::string& name,   bmcl::StringView value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(const char* name,          bmcl::Bytes value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(const std::string& name,   bmcl::Bytes value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(const char* name,          nullptr_t);
-    bmcl::Option<Error> bind(const std::string& name,   nullptr_t);
+    bmcl::Option<Error> bind(uint idx, bmcl::Option<int> value);
+    bmcl::Option<Error> bind(uint idx, bmcl::Option<double> value);
+    bmcl::Option<Error> bind(uint idx, bmcl::Option<int64_t> value);
+    bmcl::Option<Error> bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy = copy);
+    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy = copy);
+    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semantic fcopy = copy);
+
+    template<typename... A>
+    inline bmcl::Option<Error> bind(const char* name, A&&... a)
+    {
+        auto r = bind_index(name);
+        if (r.isErr()) return r.unwrapErr();
+        return bind(r.unwrap(), std::forward(a)...);
+    }
+
+    template<typename... A>
+    inline bmcl::Option<Error> bind(const std::string& name, A&&... a)
+    {
+        return bind(r.c_str(), std::forward(a)...);
+    }
 
     class bindstream
     {
@@ -340,7 +356,7 @@ class inserter : public statement
 public:
     explicit inserter(database& db, bmcl::StringView stmt = nullptr);
     virtual ~inserter();
-    bmcl::Result<uint64_t, Error> insert();
+    InsError insert();
 };
 
 template<> int selecter::rows::get<int>(uint idx) const;
