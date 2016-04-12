@@ -218,20 +218,14 @@ public:
     {
         auto r = bind_index(name);
         if (r.isErr()) return r.unwrapErr();
-        return bind(r.unwrap(), std::forward(a)...);
         return bind(r.unwrap(), std::forward<T>(t));
     }
 
     template<typename T>
     inline bmcl::Option<Error> bind(const char* name, T&& t, copy_semantic fcopy)
     {
-        return bind(r.c_str(), std::forward(a)...);
-        std::cout << "param: " << name << " value: ";
         auto r = bind_index(name);
         if (r.isErr()) return r.unwrapErr();
-        auto r2 = bind(r.unwrap(), std::forward<T>(t), fcopy);
-        std::cout << std::endl;
-        return r2;
         return bind(r.unwrap(), std::forward<T>(t), fcopy);
     }
 
