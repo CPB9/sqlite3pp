@@ -299,32 +299,32 @@ public:
     explicit selecter(database& db, bmcl::StringView stmt = nullptr);
     virtual ~selecter();
 
-    class rows
+    class row
     {
     public:
         class getstream
         {
         public:
-            getstream(rows* rws, uint idx);
+            getstream(row* rw, uint idx);
 
             template <class T>
-            getstream& operator >> (T& value) {
-                value = rws_->get<T>(idx_);
+            getstream& operator >> (T& value)
+            {
+                value = rw_->get<T>(idx_);
                 ++idx_;
                 return *this;
             }
 
         private:
-            rows* rws_;
+            row* rw_;
             uint idx_;
         };
 
-        explicit rows(selecter* stmt);
-
-        uint data_count() const;
+        explicit row(selecter* stmt);
+        uint column_count() const;
         data_type column_type(uint idx) const;
-
         uint column_bytes(uint idx) const;
+        getstream getter(uint idx = 0);
 
         template <class T> T get(uint idx) const;
         template <class T> T get(const char* name) const
@@ -344,14 +344,12 @@ public:
             return std::make_tuple(get<Ts>(idxs)...);
         }
 
-        getstream getter(uint idx = 0);
-
     private:
         selecter* stmt_;
     };
 
     bool next();
-    rows get_row();
+    row get_row();
     uint column_count() const;
     bmcl::Option<uint> column_index(const char* name) const;
     char const* column_name(uint idx) const;
@@ -366,19 +364,19 @@ public:
     InsError insert();
 };
 
-template<> int selecter::rows::get<int>(uint idx) const;
-template<> int64_t selecter::rows::get<int64_t>(uint idx) const;
-template<> double selecter::rows::get<double>(uint idx) const;
-template<> std::string selecter::rows::get<std::string>(uint idx) const;
-template<> const char* selecter::rows::get<const char*>(uint idx) const;
-template<> bmcl::Bytes selecter::rows::get<bmcl::Bytes>(uint idx) const;
+template<> int selecter::row::get<int>(uint idx) const;
+template<> int64_t selecter::row::get<int64_t>(uint idx) const;
+template<> double selecter::row::get<double>(uint idx) const;
+template<> std::string selecter::row::get<std::string>(uint idx) const;
+template<> const char* selecter::row::get<const char*>(uint idx) const;
+template<> bmcl::Bytes selecter::row::get<bmcl::Bytes>(uint idx) const;
 
-extern template int selecter::rows::get<int>(uint idx) const;
-extern template int64_t selecter::rows::get<int64_t>(uint idx) const;
-extern template double selecter::rows::get<double>(uint idx) const;
-extern template std::string selecter::rows::get<std::string>(uint idx) const;
-extern template const char* selecter::rows::get<const char*>(uint idx) const;
-extern template bmcl::Bytes selecter::rows::get<bmcl::Bytes>(uint idx) const;
+extern template int selecter::row::get<int>(uint idx) const;
+extern template int64_t selecter::row::get<int64_t>(uint idx) const;
+extern template double selecter::row::get<double>(uint idx) const;
+extern template std::string selecter::row::get<std::string>(uint idx) const;
+extern template const char* selecter::row::get<const char*>(uint idx) const;
+extern template bmcl::Bytes selecter::row::get<bmcl::Bytes>(uint idx) const;
 
 class transaction : noncopyable
 {

@@ -66,31 +66,31 @@ int authorizer_impl(void* p, int evcode, char const* p1, char const* p2, char co
 } // namespace
 
 template<>
-int selecter::rows::get<int>(uint idx) const
+int selecter::row::get<int>(uint idx) const
 {
     return sqlite3_column_int(stmt_->stmt_, idx);
 }
 
 template<>
-int64_t selecter::rows::get<int64_t>(uint idx) const
+int64_t selecter::row::get<int64_t>(uint idx) const
 {
     return sqlite3_column_int64(stmt_->stmt_, idx);
 }
 
 template<>
-double selecter::rows::get<double>(uint idx) const
+double selecter::row::get<double>(uint idx) const
 {
     return sqlite3_column_double(stmt_->stmt_, idx);
 }
 
 template<>
-const char* selecter::rows::get<const char*>(uint idx) const
+const char* selecter::row::get<const char*>(uint idx) const
 {
     return reinterpret_cast<const char*>(sqlite3_column_text(stmt_->stmt_, idx));
 }
 
 template<>
-std::string selecter::rows::get<std::string>(uint idx) const
+std::string selecter::row::get<std::string>(uint idx) const
 {
     const char* p = get<const char*>(idx);
     if (!p)
@@ -99,7 +99,7 @@ std::string selecter::rows::get<std::string>(uint idx) const
 }
 
 template<>
-bmcl::Bytes selecter::rows::get<bmcl::Bytes>(uint idx) const
+bmcl::Bytes selecter::row::get<bmcl::Bytes>(uint idx) const
 {
     const void* p = sqlite3_column_blob(stmt_->stmt_, idx);
     int size = sqlite3_column_bytes(stmt_->stmt_, idx);
@@ -614,30 +614,30 @@ bmcl::StringView batch::state() const
     return state_;
 }
 
-selecter::rows::getstream::getstream(rows* rws, uint idx) : rws_(rws), idx_(idx)
+selecter::row::getstream::getstream(row* rws, uint idx) : rw_(rws), idx_(idx)
 {
 }
 
-selecter::rows::rows(selecter* stmt) : stmt_(stmt)
+selecter::row::row(selecter* stmt) : stmt_(stmt)
 {
 }
 
-uint selecter::rows::data_count() const
+uint selecter::row::column_count() const
 {
     return static_cast<uint>(sqlite3_data_count(stmt_->stmt_));
 }
 
-data_type selecter::rows::column_type(uint idx) const
+data_type selecter::row::column_type(uint idx) const
 {
     return static_cast<data_type>(sqlite3_column_type(stmt_->stmt_, idx));
 }
 
-uint selecter::rows::column_bytes(uint idx) const
+uint selecter::row::column_bytes(uint idx) const
 {
     return static_cast<uint>(sqlite3_column_bytes(stmt_->stmt_, idx));
 }
 
-selecter::rows::getstream selecter::rows::getter(uint idx)
+selecter::row::getstream selecter::row::getter(uint idx)
 {
     return getstream(this, idx);
 }
@@ -650,9 +650,9 @@ bool selecter::next()
     return r.unwrap();
 }
 
-selecter::rows selecter::get_row()
+selecter::row selecter::get_row()
 {
-    return rows(this);
+    return row(this);
 }
 
 selecter::selecter(database& db, bmcl::StringView stmt) : statement(db, stmt)
