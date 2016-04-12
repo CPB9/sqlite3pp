@@ -317,7 +317,7 @@ public:
             uint idx_;
         };
 
-        explicit rows(sqlite3_stmt* stmt);
+        explicit rows(selecter* stmt);
 
         uint data_count() const;
         data_type column_type(uint idx) const;
@@ -325,6 +325,16 @@ public:
         uint column_bytes(uint idx) const;
 
         template <class T> T get(uint idx) const;
+        template <class T> T get(const char* name) const
+        {
+            auto r = stmt_->column_index(name);
+            if (r.isNone())
+            {
+                assert(false);
+                return T();
+            }
+            return get<T>(r.unwrap());
+        }
 
         template <class... Ts>
         std::tuple<Ts...> get_columns(typename convert<Ts>::to_uint... idxs) const
@@ -335,7 +345,7 @@ public:
         getstream getter(uint idx = 0);
 
     private:
-        sqlite3_stmt* stmt_;
+        selecter* stmt_;
     };
 
     class query_iterator : public std::iterator<std::input_iterator_tag, rows>
@@ -357,7 +367,7 @@ public:
     };
 
     uint column_count() const;
-
+    bmcl::Option<uint> column_index(const char* name) const;
     char const* column_name(uint idx) const;
     char const* column_decltype(uint idx) const;
 
