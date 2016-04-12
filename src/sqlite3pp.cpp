@@ -92,7 +92,10 @@ const char* selecter::rows::get<const char*>(uint idx) const
 template<>
 std::string selecter::rows::get<std::string>(uint idx) const
 {
-    return get<const char*>(idx);
+    const char* p = get<const char*>(idx);
+    if (!p)
+        return std::string();
+    return p;
 }
 
 template<>
