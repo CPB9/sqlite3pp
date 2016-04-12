@@ -139,6 +139,7 @@ public:
     bmcl::Option<int64_t> last_insert_rowid() const;
     const char* errmsg() const;
 
+    bmcl::Option<Error> synchronous_mode(const char* value);
     bmcl::Option<Error> enable_foreign_keys(bool enable = true);
     bmcl::Option<Error> enable_triggers(bool enable = true);
     bmcl::Option<Error> enable_extended_result_codes(bool enable = true);

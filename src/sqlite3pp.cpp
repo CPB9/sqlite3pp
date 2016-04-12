@@ -248,6 +248,11 @@ bmcl::Option<int64_t> database::last_insert_rowid() const
     return bmcl::None;
 }
 
+bmcl::Option<Error> database::synchronous_mode(const char* value)
+{
+    return executef("PRAGMA synchronous = ?", value);
+}
+
 bmcl::Option<Error> database::enable_foreign_keys(bool enable)
 {
     return sqlite_call(sqlite3_db_config(db_, SQLITE_DBCONFIG_ENABLE_FKEY, enable ? 1 : 0, nullptr));
