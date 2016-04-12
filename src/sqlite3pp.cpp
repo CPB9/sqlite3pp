@@ -642,50 +642,17 @@ selecter::rows::getstream selecter::rows::getter(uint idx)
     return getstream(this, idx);
 }
 
-selecter::query_iterator::query_iterator() : cmd_(nullptr), isDone_(true)
+bool selecter::next()
 {
-}
-
-selecter::query_iterator::query_iterator(selecter* cmd) : cmd_(cmd)
-{
-    auto r = cmd_->step();
+    auto r = step();
     if (r.isErr())
-    {
-        isDone_ = true;
-        rc_ = r.unwrapErr();
-        //throw database_error(cmd_->db_);
-        return;
-    }
-    isDone_ = r.unwrap();
+        return false;
+    return r.unwrap();
 }
 
-bool selecter::query_iterator::operator==(selecter::query_iterator const& other) const
+selecter::rows selecter::get_row()
 {
-    return isDone_ == other.isDone_;
-}
-
-bool selecter::query_iterator::operator!=(selecter::query_iterator const& other) const
-{
-    return isDone_ != other.isDone_;
-}
-
-selecter::query_iterator& selecter::query_iterator::operator++()
-{
-    auto r = cmd_->step();
-    if (r.isErr())
-    {
-        isDone_ = true;
-        rc_ = r.unwrapErr();
-        //throw database_error(cmd_->db_);
-        return *this;
-    }
-    isDone_ = r.unwrap();
-    return *this;
-}
-
-selecter::query_iterator::value_type selecter::query_iterator::operator*() const
-{
-    return rows(cmd_);
+    return rows(this);
 }
 
 selecter::selecter(database& db, bmcl::StringView stmt) : statement(db, stmt)
@@ -722,16 +689,6 @@ bmcl::Option<uint> selecter::column_index(const char* name) const
         ++i;
     }
     return bmcl::None;
-}
-
-selecter::iterator selecter::begin()
-{
-    return query_iterator(this);
-}
-
-selecter::iterator selecter::end()
-{
-    return query_iterator();
 }
 
 inserter::inserter(database& db, bmcl::StringView stmt) : statement(db, stmt)

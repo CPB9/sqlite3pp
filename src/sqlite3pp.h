@@ -350,33 +350,12 @@ public:
         selecter* stmt_;
     };
 
-    class query_iterator : public std::iterator<std::input_iterator_tag, rows>
-    {
-    public:
-        query_iterator();
-        explicit query_iterator(selecter* cmd);
-
-        bool operator==(query_iterator const&) const;
-        bool operator!=(query_iterator const&) const;
-        query_iterator& operator++();
-        value_type operator*() const;
-        inline OptError error() const { return rc_; }
-
-    private:
-        selecter* cmd_;
-        bool  isDone_;
-        OptError rc_;
-    };
-
+    bool next();
+    rows get_row();
     uint column_count() const;
     bmcl::Option<uint> column_index(const char* name) const;
     char const* column_name(uint idx) const;
     char const* column_decltype(uint idx) const;
-
-    using iterator = query_iterator;
-
-    iterator begin();
-    iterator end();
 };
 
 class inserter : public statement
