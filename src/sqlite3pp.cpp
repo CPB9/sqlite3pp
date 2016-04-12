@@ -396,6 +396,14 @@ bmcl::Result<bool, Error> statement::step()
 
 OptError statement::exec()
 {
+    if (!stmt_) return static_cast<Error>(SQLITE_MISUSE);
+
+    {
+        auto r = reset();
+        if (r.isSome())
+            return r;
+    }
+
     auto r = sqlite3_step(stmt_);
     if (r == SQLITE_DONE || r == SQLITE_ROW || r == SQLITE_OK)
         return bmcl::None;
