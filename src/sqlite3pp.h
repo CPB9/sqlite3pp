@@ -127,33 +127,33 @@ public:
 
     ~database();
 
-    bmcl::Option<Error> connect(const char* dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const char* vfs = nullptr);
-    bmcl::Option<Error> connect(const std::string& dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const std::string& vfs = std::string());
-    bmcl::Option<Error> disconnect();
+    OptError connect(const char* dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const char* vfs = nullptr);
+    OptError connect(const std::string& dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const std::string& vfs = std::string());
+    OptError disconnect();
 
-    bmcl::Option<Error> attach(const char* dbname, const char* name);
-    bmcl::Option<Error> attach(const std::string& dbname, const std::string& name);
-    bmcl::Option<Error> detach(const char* name);
-    bmcl::Option<Error> detach(const std::string& name);
+    OptError attach(const char* dbname, const char* name);
+    OptError attach(const std::string& dbname, const std::string& name);
+    OptError detach(const char* name);
+    OptError detach(const std::string& name);
 
     bmcl::Option<int64_t> last_insert_rowid() const;
     const char* errmsg() const;
 
-    bmcl::Option<Error> synchronous_mode(const char* value);
-    bmcl::Option<Error> enable_foreign_keys(bool enable = true);
-    bmcl::Option<Error> enable_triggers(bool enable = true);
-    bmcl::Option<Error> enable_extended_result_codes(bool enable = true);
+    OptError synchronous_mode(const char* value);
+    OptError enable_foreign_keys(bool enable = true);
+    OptError enable_triggers(bool enable = true);
+    OptError enable_extended_result_codes(bool enable = true);
 
     static const char* version();
 
-    bmcl::Option<Error> execute(const char* sql);
-    bmcl::Option<Error> execute(const std::string& sql);
-    bmcl::Option<Error> executef(const char* sql, ...);
+    OptError execute(const char* sql);
+    OptError execute(const std::string& sql);
+    OptError executef(const char* sql, ...);
 
-    bmcl::Option<Error> commit();
-    bmcl::Option<Error> rollback();
+    OptError commit();
+    OptError rollback();
 
-    bmcl::Option<Error> set_busy_timeout(std::chrono::milliseconds timeout);
+    OptError set_busy_timeout(std::chrono::milliseconds timeout);
 
     void set_busy_handler(busy_handler h);
     void set_commit_handler(commit_handler h);
@@ -186,35 +186,35 @@ public:
     statement(database& db, bmcl::StringView stmt = nullptr);
     virtual ~statement();
 
-    bmcl::Option<Error> prepare(bmcl::StringView stmt, bmcl::StringView* left = nullptr);
+    OptError prepare(bmcl::StringView stmt, bmcl::StringView* left = nullptr);
     bmcl::Result<bool, Error> step();
-    bmcl::Option<Error> exec();
-    bmcl::Option<Error> reset();
-    bmcl::Option<Error> clear_bindings();
-    bmcl::Option<Error> finish();
+    OptError exec();
+    OptError reset();
+    OptError clear_bindings();
+    OptError finish();
     const char* sql() const;
 
     bmcl::Result<uint, Error> bind_index(const char* name);
     bmcl::Result<uint, Error> bind_index(const std::string& name);
 
-    bmcl::Option<Error> bind(uint idx, nullptr_t);
-    bmcl::Option<Error> bind(uint idx, int value);
-    bmcl::Option<Error> bind(uint idx, double value);
-    bmcl::Option<Error> bind(uint idx, int64_t value);
-    bmcl::Option<Error> bind(uint idx, const char* value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, const std::string& value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, bmcl::StringView value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, bmcl::Bytes value, copy_semantic fcopy);
+    OptError bind(uint idx, nullptr_t);
+    OptError bind(uint idx, int value);
+    OptError bind(uint idx, double value);
+    OptError bind(uint idx, int64_t value);
+    OptError bind(uint idx, const char* value, copy_semantic fcopy);
+    OptError bind(uint idx, const std::string& value, copy_semantic fcopy);
+    OptError bind(uint idx, bmcl::StringView value, copy_semantic fcopy);
+    OptError bind(uint idx, bmcl::Bytes value, copy_semantic fcopy);
 
-    bmcl::Option<Error> bind(uint idx, bmcl::Option<int> value);
-    bmcl::Option<Error> bind(uint idx, bmcl::Option<double> value);
-    bmcl::Option<Error> bind(uint idx, bmcl::Option<int64_t> value);
-    bmcl::Option<Error> bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy);
-    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semantic fcopy);
+    OptError bind(uint idx, bmcl::Option<int> value);
+    OptError bind(uint idx, bmcl::Option<double> value);
+    OptError bind(uint idx, bmcl::Option<int64_t> value);
+    OptError bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy);
+    OptError bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy);
+    OptError bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semantic fcopy);
 
     template<typename T>
-    inline bmcl::Option<Error> bind(const char* name, T&& t)
+    inline OptError bind(const char* name, T&& t)
     {
         auto r = bind_index(name);
         if (r.isErr()) return r.unwrapErr();
@@ -222,7 +222,7 @@ public:
     }
 
     template<typename T>
-    inline bmcl::Option<Error> bind(const char* name, T&& t, copy_semantic fcopy)
+    inline OptError bind(const char* name, T&& t, copy_semantic fcopy)
     {
         auto r = bind_index(name);
         if (r.isErr()) return r.unwrapErr();
@@ -230,13 +230,13 @@ public:
     }
 
     template<typename T>
-    inline bmcl::Option<Error> bind(const std::string& name, T&& t)
+    inline OptError bind(const std::string& name, T&& t)
     {
         return bind(r.c_str(), std::forward<T>(t));
     }
 
     template<typename T>
-    inline bmcl::Option<Error> bind(const std::string& name, T&& t, copy_semantic fcopy)
+    inline OptError bind(const std::string& name, T&& t, copy_semantic fcopy)
     {
         return bind(r.c_str(), std::forward<T>(t), fcopy);
     }
@@ -266,8 +266,8 @@ public:
     bindstream binder(uint idx = 1);
 
 protected:
-    bmcl::Option<Error> prepare_impl(bmcl::StringView stmt, bmcl::StringView* left);
-    bmcl::Option<Error> finish_impl(sqlite3_stmt* stmt);
+    OptError prepare_impl(bmcl::StringView stmt, bmcl::StringView* left);
+    OptError finish_impl(sqlite3_stmt* stmt);
 
 protected:
     database& db_;
@@ -279,10 +279,10 @@ class batch
 public:
     explicit batch(database& db);
     batch(database& db, bmcl::StringView stmt, copy_semantic fcopy);
-    bmcl::Option<Error> prepare(bmcl::StringView stmt, copy_semantic fcopy);
+    OptError prepare(bmcl::StringView stmt, copy_semantic fcopy);
     void reset();
     bmcl::Result<bool, Error> execute_next();
-    bmcl::Option<Error> execute_all();
+    OptError execute_all();
     bmcl::StringView state() const;
 private:
     database& db_;
@@ -348,12 +348,12 @@ public:
         bool operator!=(query_iterator const&) const;
         query_iterator& operator++();
         value_type operator*() const;
-        inline bmcl::Option<Error> error() const { return rc_; }
+        inline OptError error() const { return rc_; }
 
     private:
         selecter* cmd_;
         bool  isDone_;
-        bmcl::Option<Error> rc_;
+        OptError rc_;
     };
 
     uint column_count() const;
@@ -395,8 +395,8 @@ public:
     explicit transaction(database& db, bool fcommit = false, bool freserve = false);
     ~transaction();
 
-    bmcl::Option<Error> commit();
-    bmcl::Option<Error> rollback();
+    OptError commit();
+    OptError rollback();
 
 private:
     database* db_;
