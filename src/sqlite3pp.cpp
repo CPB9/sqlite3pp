@@ -356,6 +356,11 @@ const char* database::errmsg() const
     return sqlite3_errmsg(db_);
 }
 
+const char* statement::err_msg() const
+{
+    return sqlite3_errmsg(sqlite3_db_handle(stmt_));
+}
+
 OptError statement::finish()
 {
     if (!stmt_)

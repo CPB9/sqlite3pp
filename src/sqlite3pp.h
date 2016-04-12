@@ -192,6 +192,8 @@ public:
     OptError reset();
     OptError clear_bindings();
     OptError finish();
+    const char* err_msg() const;
+
     const char* sql() const;
 
     bmcl::Result<uint, Error> bind_index(const char* name);
