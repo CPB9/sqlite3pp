@@ -346,14 +346,23 @@ bmcl::Option<Error> statement::prepare_impl(bmcl::StringView stmt, bmcl::StringV
     return r;
 }
 
+const char* database::errmsg() const
+{
+    return sqlite3_errmsg(db_);
+}
+
 bmcl::Option<Error> statement::finish()
 {
     if (!stmt_)
         return bmcl::None;
 
-    auto rc = finish_impl(stmt_);
+    auto r = finish_impl(stmt_);
+    if (r.isSome())
+    {
+        assert(r.isNone());
+    }
     stmt_ = nullptr;
-    return rc;
+    return r;
 }
 
 bmcl::Option<Error> statement::finish_impl(sqlite3_stmt* stmt)
@@ -456,7 +465,7 @@ bmcl::Option<Error> statement::bind(uint idx, bmcl::Option<int64_t> value)
 bmcl::Option<Error> statement::bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy)
 {
     if (value.isNone()) return bind(idx, nullptr);
-    return bind(idx, *value);
+    return bind(idx, *value, fcopy);
 }
 
 bmcl::Option<Error> statement::bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy)

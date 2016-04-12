@@ -137,6 +137,7 @@ public:
     bmcl::Option<Error> detach(const std::string& name);
 
     bmcl::Option<int64_t> last_insert_rowid() const;
+    const char* errmsg() const;
 
     bmcl::Option<Error> enable_foreign_keys(bool enable = true);
     bmcl::Option<Error> enable_triggers(bool enable = true);
@@ -199,30 +200,50 @@ public:
     bmcl::Option<Error> bind(uint idx, int value);
     bmcl::Option<Error> bind(uint idx, double value);
     bmcl::Option<Error> bind(uint idx, int64_t value);
-    bmcl::Option<Error> bind(uint idx, const char* value, copy_semantic fcopy = copy);
-    bmcl::Option<Error> bind(uint idx, const std::string& value, copy_semantic fcopy = copy);
-    bmcl::Option<Error> bind(uint idx, bmcl::StringView value, copy_semantic fcopy = copy);
-    bmcl::Option<Error> bind(uint idx, bmcl::Bytes value, copy_semantic fcopy = copy);
+    bmcl::Option<Error> bind(uint idx, const char* value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(uint idx, const std::string& value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(uint idx, bmcl::StringView value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(uint idx, bmcl::Bytes value, copy_semantic fcopy);
 
     bmcl::Option<Error> bind(uint idx, bmcl::Option<int> value);
     bmcl::Option<Error> bind(uint idx, bmcl::Option<double> value);
     bmcl::Option<Error> bind(uint idx, bmcl::Option<int64_t> value);
-    bmcl::Option<Error> bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy = copy);
-    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy = copy);
-    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semantic fcopy = copy);
+    bmcl::Option<Error> bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy);
+    bmcl::Option<Error> bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semantic fcopy);
 
-    template<typename... A>
-    inline bmcl::Option<Error> bind(const char* name, A&&... a)
+    template<typename T>
+    inline bmcl::Option<Error> bind(const char* name, T&& t)
     {
         auto r = bind_index(name);
         if (r.isErr()) return r.unwrapErr();
         return bind(r.unwrap(), std::forward(a)...);
+        return bind(r.unwrap(), std::forward<T>(t));
     }
 
-    template<typename... A>
-    inline bmcl::Option<Error> bind(const std::string& name, A&&... a)
+    template<typename T>
+    inline bmcl::Option<Error> bind(const char* name, T&& t, copy_semantic fcopy)
     {
         return bind(r.c_str(), std::forward(a)...);
+        std::cout << "param: " << name << " value: ";
+        auto r = bind_index(name);
+        if (r.isErr()) return r.unwrapErr();
+        auto r2 = bind(r.unwrap(), std::forward<T>(t), fcopy);
+        std::cout << std::endl;
+        return r2;
+        return bind(r.unwrap(), std::forward<T>(t), fcopy);
+    }
+
+    template<typename T>
+    inline bmcl::Option<Error> bind(const std::string& name, T&& t)
+    {
+        return bind(r.c_str(), std::forward<T>(t));
+    }
+
+    template<typename T>
+    inline bmcl::Option<Error> bind(const std::string& name, T&& t, copy_semantic fcopy)
+    {
+        return bind(r.c_str(), std::forward<T>(t), fcopy);
     }
 
     class bindstream
