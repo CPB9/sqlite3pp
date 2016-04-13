@@ -199,7 +199,7 @@ public:
     bmcl::Result<uint, Error> bind_index(const char* name);
     bmcl::Result<uint, Error> bind_index(const std::string& name);
 
-    OptError bind(uint idx, nullptr_t);
+    OptError bind(uint idx, std::nullptr_t);
     OptError bind(uint idx, int value);
     OptError bind(uint idx, double value);
     OptError bind(uint idx, int64_t value);
@@ -234,13 +234,13 @@ public:
     template<typename T>
     inline OptError bind(const std::string& name, T&& t)
     {
-        return bind(r.c_str(), std::forward<T>(t));
+        return bind(name.c_str(), std::forward<T>(t));
     }
 
     template<typename T>
     inline OptError bind(const std::string& name, T&& t, copy_semantic fcopy)
     {
-        return bind(r.c_str(), std::forward<T>(t), fcopy);
+        return bind(name.c_str(), std::forward<T>(t), fcopy);
     }
 
     class bindstream

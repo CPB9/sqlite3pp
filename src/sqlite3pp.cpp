@@ -425,7 +425,7 @@ OptError statement::clear_bindings()
     return sqlite_call(sqlite3_clear_bindings(stmt_));
 }
 
-OptError statement::bind(uint idx, nullptr_t)
+OptError statement::bind(uint idx, std::nullptr_t)
 {
     return sqlite_call(sqlite3_bind_null(stmt_, idx));
 }

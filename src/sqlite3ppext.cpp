@@ -138,7 +138,7 @@ namespace sqlite3pp
       sqlite3_result_blob(ctx_, value.data(), static_cast<int>(value.size()), fcopy ? SQLITE_TRANSIENT : SQLITE_STATIC );
     }
 
-    void context::result(nullptr_t)
+    void context::result(std::nullptr_t)
     {
       sqlite3_result_null(ctx_);
     }
