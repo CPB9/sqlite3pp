@@ -390,8 +390,8 @@ bmcl::Result<bool, Error> statement::step()
         return false;
     else if (r == SQLITE_ROW)
         return true;
-    assert(r != SQLITE_OK);
-    return r;
+    assert(r == SQLITE_OK);
+    return static_cast<Error>(r);
 }
 
 OptError statement::exec()
