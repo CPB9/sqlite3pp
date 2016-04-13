@@ -342,15 +342,12 @@ OptError statement::prepare(bmcl::StringView stmt, bmcl::StringView* left)
         if (left) *left = stmt;
         return r;
     }
-    return prepare_impl(stmt, left);
-}
 
-OptError statement::prepare_impl(bmcl::StringView stmt, bmcl::StringView* left)
-{
     const char* tail = nullptr;
-    auto r = sqlite_call(sqlite3_prepare_v2(db_.db_, stmt.data(), static_cast<int>(stmt.size()), &stmt_, &tail));
+    r = sqlite_call(sqlite3_prepare_v2(db_.db_, stmt.data(), static_cast<int>(stmt.size()), &stmt_, &tail));
     if (left)
         *left = bmcl::StringView(tail, stmt.end());
+
     return r;
 }
 
@@ -369,18 +366,14 @@ OptError statement::finish()
     if (!stmt_)
         return bmcl::None;
 
-    auto r = finish_impl(stmt_);
+    sqlite3_reset(stmt_);
+    auto r = sqlite_call(sqlite3_finalize(stmt_));
     if (r.isSome())
     {
         assert(r.isNone());
     }
     stmt_ = nullptr;
     return r;
-}
-
-OptError statement::finish_impl(sqlite3_stmt* stmt)
-{
-    return sqlite_call(sqlite3_finalize(stmt));
 }
 
 bmcl::Result<bool, Error> statement::step()
@@ -390,7 +383,6 @@ bmcl::Result<bool, Error> statement::step()
         return false;
     else if (r == SQLITE_ROW)
         return true;
-    assert(r == SQLITE_OK);
     return static_cast<Error>(r);
 }
 

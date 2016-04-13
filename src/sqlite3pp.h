@@ -268,10 +268,6 @@ public:
     bindstream binder(uint idx = 1);
 
 protected:
-    OptError prepare_impl(bmcl::StringView stmt, bmcl::StringView* left);
-    OptError finish_impl(sqlite3_stmt* stmt);
-
-protected:
     database& db_;
     sqlite3_stmt* stmt_;
 };
