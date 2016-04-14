@@ -388,7 +388,8 @@ bmcl::Result<bool, Error> statement::step()
 
 OptError statement::exec()
 {
-    if (!stmt_) return static_cast<Error>(SQLITE_MISUSE);
+    if (!stmt_)
+        return static_cast<Error>(SQLITE_MISUSE);
 
     {
         auto r = reset();
@@ -496,14 +497,16 @@ OptError statement::bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semanti
 bmcl::Result<uint, Error> statement::bind_index(const char* name)
 {
     uint r = sqlite3_bind_parameter_index(stmt_, name);
-    if (r == 0) return SQLITE_MISUSE;
+    if (r == 0)
+        return static_cast<Error>(SQLITE_MISUSE);
     return r;
 }
 
 bmcl::Result<uint, Error> statement::bind_index(const std::string& name)
 {
     uint r = sqlite3_bind_parameter_index(stmt_, name.c_str());
-    if (r == 0) return SQLITE_MISUSE;
+    if (r == 0)
+        return static_cast<Error>(SQLITE_MISUSE);
     return r;
 }
 
@@ -614,24 +617,65 @@ selecter::row::row(selecter* stmt) : stmt_(stmt)
 {
 }
 
-uint selecter::row::column_count() const
+uint selecter::row::count() const
 {
     return static_cast<uint>(sqlite3_data_count(stmt_->stmt_));
 }
 
-data_type selecter::row::column_type(uint idx) const
+data_type selecter::row::type(uint idx) const
 {
     return static_cast<data_type>(sqlite3_column_type(stmt_->stmt_, idx));
 }
 
-uint selecter::row::column_bytes(uint idx) const
+bool selecter::row::is_null(uint idx) const
+{
+    return type(idx) == data_type::Null;
+}
+
+bool selecter::row::is_null(const char* name) const
+{
+    return type(name) == data_type::Null;
+}
+
+data_type selecter::row::type(const char* name) const
+{
+    auto r = stmt_->column_index(name);
+    if (r.isNone())
+    {
+        assert(false);
+        return data_type::Null;
+    }
+    return type(*r);
+}
+
+uint selecter::row::bytes(uint idx) const
 {
     return static_cast<uint>(sqlite3_column_bytes(stmt_->stmt_, idx));
+}
+
+uint selecter::row::bytes(const char* name) const
+{
+    auto r = stmt_->column_index(name);
+    if (r.isNone())
+    {
+        assert(false);
+        return 0;
+    }
+    return bytes(*r);
 }
 
 selecter::row::getstream selecter::row::getter(uint idx)
 {
     return getstream(this, idx);
+}
+
+OptError selecter::exec()
+{   //overload is needed for the case where one can miss first row
+    // after statement.exec, selecter.next command sequence
+    if (!stmt_)
+        return static_cast<Error>(SQLITE_MISUSE);
+
+    return reset();
 }
 
 bool selecter::next()
@@ -699,7 +743,7 @@ InsError inserter::insert()
     auto id = db_.last_insert_rowid();
     if (id.isSome())
         return id.unwrap();
-    return SQLITE_MISUSE;
+    return static_cast<Error>(SQLITE_MISUSE);
 }
 
 transaction::transaction(database& db, bool fcommit, bool freserve) : db_(&db), fcommit_(fcommit)

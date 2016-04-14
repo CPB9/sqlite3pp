@@ -186,9 +186,10 @@ public:
     statement(database& db, bmcl::StringView stmt = nullptr);
     virtual ~statement();
 
+    inline database& db() { return db_; }
     OptError prepare(bmcl::StringView stmt, bmcl::StringView* left = nullptr);
     bmcl::Result<bool, Error> step();
-    OptError exec();
+    virtual OptError exec();
     OptError reset();
     OptError clear_bindings();
     OptError finish();
@@ -317,11 +318,15 @@ public:
         };
 
         explicit row(selecter* stmt);
-        uint column_count() const;
-        data_type column_type(uint idx) const;
-        uint column_bytes(uint idx) const;
         getstream getter(uint idx = 0);
 
+        uint count() const;
+        uint bytes(uint idx) const;
+        uint bytes(const char* name) const;
+        data_type type(uint idx) const;
+        data_type type(const char* name) const;
+        bool is_null(uint idx) const;
+        bool is_null(const char* name) const;
         template <class T> T get(uint idx) const;
         template <class T> T get(const char* name) const
         {
@@ -335,7 +340,7 @@ public:
         }
 
         template <class... Ts>
-        std::tuple<Ts...> get_columns(typename convert<Ts>::to_uint... idxs) const
+        std::tuple<Ts...> get_all(typename convert<Ts>::to_uint... idxs) const
         {
             return std::make_tuple(get<Ts>(idxs)...);
         }
@@ -344,6 +349,7 @@ public:
         selecter* stmt_;
     };
 
+    OptError exec() override;
     bool next();
     row get_row();
     uint column_count() const;
