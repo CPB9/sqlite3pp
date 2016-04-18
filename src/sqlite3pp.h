@@ -150,6 +150,7 @@ public:
     OptError execute(const std::string& sql);
     OptError executef(const char* sql, ...);
 
+    OptError begin(bool immediate = false);
     OptError commit();
     OptError rollback();
 
@@ -383,7 +384,7 @@ extern template bmcl::Bytes selecter::row::get<bmcl::Bytes>(uint idx) const;
 class transaction : noncopyable
 {
 public:
-    explicit transaction(database& db, bool fcommit = false, bool freserve = false);
+    explicit transaction(database& db, bool fcommit = false, bool immediate = false);
     ~transaction();
 
     OptError commit();

@@ -303,6 +303,11 @@ OptError database::set_busy_timeout(std::chrono::milliseconds timeout)
     return sqlite_call(sqlite3_busy_timeout(db_, static_cast<int>(timeout.count())));
 }
 
+OptError database::begin(bool immediate)
+{
+    return immediate ? execute("BEGIN IMMEDIATE") : execute("BEGIN");
+}
+
 OptError database::commit()
 {
     return execute("COMMIT");
@@ -746,9 +751,9 @@ InsError inserter::insert()
     return static_cast<Error>(SQLITE_MISUSE);
 }
 
-transaction::transaction(database& db, bool fcommit, bool freserve) : db_(&db), fcommit_(fcommit)
+transaction::transaction(database& db, bool fcommit, bool immediate) : db_(&db), fcommit_(fcommit)
 {
-    auto rc = db_->execute(freserve ? "BEGIN IMMEDIATE" : "BEGIN");
+    auto rc = db_->begin(immediate);
     if (rc.isSome())
     {
         db_ = nullptr;
@@ -761,7 +766,7 @@ transaction::~transaction()
     if (!db_)
         return;
 
-    auto r = db_->execute(fcommit_ ? "COMMIT" : "ROLLBACK");
+    auto r = (fcommit_ ? db_->commit() : db_->rollback());
     if (r.isSome())
     {
         assert(false);
