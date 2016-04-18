@@ -356,14 +356,16 @@ OptError statement::prepare(bmcl::StringView stmt, bmcl::StringView* left)
     return r;
 }
 
-const char* database::errmsg() const
+bmcl::Option<const char*> database::err_msg() const
 {
-    return sqlite3_errmsg(db_);
+    const char* p = sqlite3_errmsg(db_);
+    if (p) return p;
+    return bmcl::None;
 }
 
-const char* statement::err_msg() const
+bmcl::Option<const char*> statement::err_msg() const
 {
-    return sqlite3_errmsg(sqlite3_db_handle(stmt_));
+    return db_.err_msg();
 }
 
 OptError statement::finish()
@@ -408,7 +410,7 @@ OptError statement::exec()
     return static_cast<Error>(r);
 }
 
-const char* statement::sql() const
+bmcl::Option<const char*> statement::sql() const
 {
     return sqlite3_sql(stmt_);
 }

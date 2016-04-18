@@ -137,7 +137,7 @@ public:
     OptError detach(const std::string& name);
 
     bmcl::Option<int64_t> last_insert_rowid() const;
-    const char* errmsg() const;
+    bmcl::Option<const char*> err_msg() const;
 
     OptError synchronous_mode(const char* value);
     OptError enable_foreign_keys(bool enable = true);
@@ -194,9 +194,8 @@ public:
     OptError reset();
     OptError clear_bindings();
     OptError finish();
-    const char* err_msg() const;
-
-    const char* sql() const;
+    bmcl::Option<const char*> err_msg() const;
+    bmcl::Option<const char*> sql() const;
 
     bmcl::Result<uint, Error> bind_index(const char* name);
     bmcl::Result<uint, Error> bind_index(const std::string& name);
