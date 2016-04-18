@@ -26,6 +26,7 @@ target_include_directories(sqlite3pp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(NOT MSVC)
     set(SQLITE3PP_DEFS -std=c++11)
+    target_link_libraries(sqlite3 dl)
 endif()
 
 target_compile_options(sqlite3pp PUBLIC ${SQLITE3PP_DEFS})
