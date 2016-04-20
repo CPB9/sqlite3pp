@@ -130,6 +130,7 @@ public:
     OptError connect(const char* dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const char* vfs = nullptr);
     OptError connect(const std::string& dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const std::string& vfs = std::string());
     OptError disconnect();
+    inline bool is_connected() { return db_ != nullptr; }
 
     OptError attach(const char* dbname, const char* name);
     OptError attach(const std::string& dbname, const std::string& name);
