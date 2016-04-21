@@ -276,6 +276,16 @@ const char* database::version()
     return SQLITE_VERSION;
 }
 
+bool database::is_threadsafe()
+{
+    return sqlite3_threadsafe();
+}
+
+const char* database::filename()
+{
+    return sqlite3_db_filename(db_, nullptr);
+}
+
 OptError database::execute(const char* sql)
 {
     return sqlite_call(sqlite3_exec(db_, sql, 0, 0, 0));

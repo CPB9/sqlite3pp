@@ -144,8 +144,10 @@ public:
     OptError enable_foreign_keys(bool enable = true);
     OptError enable_triggers(bool enable = true);
     OptError enable_extended_result_codes(bool enable = true);
+    const char* filename();
 
     static const char* version();
+    static bool is_threadsafe();
 
     OptError execute(const char* sql);
     OptError execute(const std::string& sql);
