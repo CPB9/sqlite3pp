@@ -335,6 +335,7 @@ statement::statement(database& db, bmcl::StringView stmt) : db_(db), stmt_(nullp
     auto r = prepare(stmt, nullptr);
     if (r.isSome())
     {
+        BMCL_CRITICAL() <<"Sqlite error: " << static_cast<int>(r.unwrap());
         assert(false);
         throw database_error(db_);
     }
