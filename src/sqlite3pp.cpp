@@ -191,7 +191,13 @@ OptError database::disconnect()
 
     auto r = sqlite_call(sqlite3_close(db_));
     if (r.isNone())
+    {
         db_ = nullptr;
+    }
+    else
+    {
+        BMCL_CRITICAL() << "Sqlite error: " << to_string(*r);
+    }
     return r;
 }
 
