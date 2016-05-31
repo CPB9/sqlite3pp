@@ -117,6 +117,7 @@ public:
     using rollback_handler = std::function<void()>;
     using update_handler = std::function<void (int, char const*, char const*, long long int)>;
     using authorize_handler = std::function<int (int, char const*, char const*, char const*, char const*)>;
+    using error_handler = std::function<void(Error, const char*)>;
 
     explicit database();
     database(const char* dbname, uint flags = OPEN_READWRITE | OPEN_CREATE, const char* vfs = nullptr);
@@ -164,6 +165,7 @@ public:
     void set_rollback_handler(rollback_handler h);
     void set_update_handler(update_handler h);
     void set_authorize_handler(authorize_handler h);
+    static void set_error_handler(error_handler h);
 
 private:
     sqlite3* db_;
@@ -173,6 +175,7 @@ private:
     rollback_handler rh_;
     update_handler uh_;
     authorize_handler ah_;
+    static error_handler eh_;
 };
 
 class database_error : public std::runtime_error

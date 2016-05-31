@@ -65,6 +65,12 @@ int authorizer_impl(void* p, int evcode, char const* p1, char const* p2, char co
     return (*h)(evcode, p1, p2, dbname, tvname);
 }
 
+void error_logger_impl(void* p, int err, char const* msg)
+{
+    auto h = static_cast<database::error_handler*>(p);
+    (*h)((sqlite3pp::Error)err, msg);
+}
+
 } // namespace
 
 template<>
@@ -112,6 +118,8 @@ const char* to_string(Error err)
 {
     return sqlite3_errstr(static_cast<int>(err));
 }
+
+database::error_handler database::eh_;
 
 database::database() : db_(nullptr)
 {
@@ -249,6 +257,12 @@ void database::set_authorize_handler(authorize_handler h)
 {
     ah_ = h;
     sqlite3_set_authorizer(db_, ah_ ? authorizer_impl : 0, &ah_);
+}
+
+void database::set_error_handler(error_handler h)
+{
+    eh_ = h;
+    sqlite3_config(SQLITE_CONFIG_LOG, eh_ ? error_logger_impl : 0, &eh_);
 }
 
 bmcl::Option<int64_t> database::last_insert_rowid() const
