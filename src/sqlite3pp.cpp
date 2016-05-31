@@ -261,7 +261,7 @@ bmcl::Option<int64_t> database::last_insert_rowid() const
 
 OptError database::synchronous_mode(const char* value)
 {
-    return executef("PRAGMA synchronous = ?", value);
+    return executef("PRAGMA synchronous = %q", value);
 }
 
 OptError database::enable_foreign_keys(bool enable)
