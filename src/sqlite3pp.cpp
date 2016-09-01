@@ -445,7 +445,7 @@ OptError statement::exec()
 
 bmcl::Option<const char*> statement::sql() const
 {
-    const char* p = sqlite3_sql(stmt_);
+    const char* p = sqlite3_expanded_sql(stmt_);
     if (p == nullptr)
         return bmcl::None;
     return p;
