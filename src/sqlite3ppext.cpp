@@ -113,6 +113,11 @@ namespace sqlite3pp
 
 
 
+    void context::result(bool value)
+    {
+        sqlite3_result_int(ctx_, value);
+    }
+
     void context::result(int value)
     {
       sqlite3_result_int(ctx_, value);

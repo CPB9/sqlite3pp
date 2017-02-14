@@ -74,6 +74,12 @@ void error_logger_impl(void* p, int err, char const* msg)
 } // namespace
 
 template<>
+bool selecter::row::get<bool>(uint idx) const
+{
+    return sqlite3_column_int(stmt_->stmt_, idx);
+}
+
+template<>
 int selecter::row::get<int>(uint idx) const
 {
     return sqlite3_column_int(stmt_->stmt_, idx);
@@ -466,6 +472,11 @@ OptError statement::bind(uint idx, std::nullptr_t)
     return sqlite_call(sqlite3_bind_null(stmt_, idx));
 }
 
+OptError statement::bind(uint idx, bool value)
+{
+    return sqlite_call(sqlite3_bind_int(stmt_, idx, value));
+}
+
 OptError statement::bind(uint idx, int value)
 {
     return sqlite_call(sqlite3_bind_int(stmt_, idx, value));
@@ -499,6 +510,12 @@ OptError statement::bind(uint idx, const char* value, copy_semantic fcopy)
 OptError statement::bind(uint idx, const std::string& value, copy_semantic fcopy)
 {
     return bind(idx, bmcl::StringView(value), fcopy);
+}
+
+OptError statement::bind(uint idx, bmcl::Option<bool> value)
+{
+    if (value.isNone()) return bind(idx, nullptr);
+    return bind(idx, *value);
 }
 
 OptError statement::bind(uint idx, bmcl::Option<int> value)
