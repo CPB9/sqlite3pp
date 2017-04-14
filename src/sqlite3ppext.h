@@ -91,6 +91,7 @@ namespace sqlite3pp
         return get(idx, T());
       }
 
+      void result(bool value);
       void result(int value);
       void result(double value);
       void result(int64_t value);
