@@ -402,6 +402,14 @@ bmcl::Option<const char*> database::err_msg() const
     return bmcl::None;
 }
 
+bmcl::Option<int64_t> database::changes() const
+{
+    int64_t count = sqlite3_changes(db_);
+    if (count > 0)
+        return count;
+    return bmcl::None;
+}
+
 bmcl::Option<const char*> statement::err_msg() const
 {
     return db_.err_msg();

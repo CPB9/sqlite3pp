@@ -140,6 +140,7 @@ public:
 
     bmcl::Option<int64_t> last_insert_rowid() const;
     bmcl::Option<const char*> err_msg() const;
+    bmcl::Option<int64_t> changes() const;
 
     OptError synchronous_mode(const char* value);
     OptError enable_foreign_keys(bool enable = true);
