@@ -279,9 +279,16 @@ bmcl::Option<int64_t> database::last_insert_rowid() const
     return bmcl::None;
 }
 
-OptError database::synchronous_mode(const char* value)
+OptError database::synchronous_mode(synchronous value)
 {
-    return executef("PRAGMA synchronous = %q", value);
+    switch (value)
+    {
+    case sqlite3pp::synchronous::Off:   return executef("PRAGMA synchronous OFF");
+    case sqlite3pp::synchronous::Normal:return executef("PRAGMA synchronous NORMAL");
+    case sqlite3pp::synchronous::Full:  return executef("PRAGMA synchronous FULL");
+    case sqlite3pp::synchronous::Extra: return executef("PRAGMA synchronous EXTRA");
+    };
+    return static_cast<Error>(SQLITE_ERROR);
 }
 
 OptError database::enable_foreign_keys(bool enable)

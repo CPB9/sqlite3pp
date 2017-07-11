@@ -88,6 +88,7 @@ enum FileFlags
     OPEN_WAL              = 0x00080000,  /* VFS only */
 };
 
+enum class synchronous { Off = 0, Normal = 1, Full = 2, Extra = 3};
 enum class data_type : uint8_t { Integer = 1, Float = 2, Text = 3, Blob = 4, Null = 5 };
 
 
@@ -142,7 +143,7 @@ public:
     bmcl::Option<const char*> err_msg() const;
     bmcl::Option<int64_t> changes() const;
 
-    OptError synchronous_mode(const char* value);
+    OptError synchronous_mode(synchronous);
     OptError enable_foreign_keys(bool enable = true);
     OptError enable_triggers(bool enable = true);
     OptError enable_extended_result_codes(bool enable = true);
