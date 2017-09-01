@@ -370,7 +370,8 @@ statement::statement(database& db, bmcl::StringView stmt) : db_(db), stmt_(nullp
     auto r = prepare(stmt, nullptr);
     if (r.isSome())
     {
-        BMCL_CRITICAL() <<"Sqlite error: " << static_cast<int>(r.unwrap());
+        std::string e = std::string("Sqlite error: ") + to_string(r.unwrap());
+        BMCL_CRITICAL() << e;
         assert(false);
         throw database_error(db_);
     }
