@@ -283,10 +283,10 @@ OptError database::synchronous_mode(synchronous value)
 {
     switch (value)
     {
-    case sqlite3pp::synchronous::Off:   return executef("PRAGMA synchronous OFF");
-    case sqlite3pp::synchronous::Normal:return executef("PRAGMA synchronous NORMAL");
-    case sqlite3pp::synchronous::Full:  return executef("PRAGMA synchronous FULL");
-    case sqlite3pp::synchronous::Extra: return executef("PRAGMA synchronous EXTRA");
+    case sqlite3pp::synchronous::Off:   return executef("PRAGMA synchronous = OFF");
+    case sqlite3pp::synchronous::Normal:return executef("PRAGMA synchronous = NORMAL");
+    case sqlite3pp::synchronous::Full:  return executef("PRAGMA synchronous = FULL");
+    case sqlite3pp::synchronous::Extra: return executef("PRAGMA synchronous = EXTRA");
     };
     return static_cast<Error>(SQLITE_ERROR);
 }
