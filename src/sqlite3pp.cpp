@@ -24,9 +24,9 @@
 
 #include <cstring>
 #include <cassert>
-#include "bmcl/Logging.h"
-#include "bmcl/Panic.h"
-#include "bmcl/Assert.h"
+#include <bmcl/Logging.h>
+#include <bmcl/Panic.h>
+#include <bmcl/Assert.h>
 #include "sqlite3.h"
 #include "sqlite3pp.h"
 

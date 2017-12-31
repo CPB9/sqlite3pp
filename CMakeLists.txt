@@ -2,7 +2,9 @@ project(sqlite3pp)
 
 cmake_minimum_required(VERSION 2.8.11)
 
-add_subdirectory(thirdparty/bmcl)
+include(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/bmcl/cmake/Bmcl.cmake)
+
+bmcl_add_dep_bmcl(thirdparty/bmcl)
 
 add_library(sqlite3
     src/sqlite3.c
