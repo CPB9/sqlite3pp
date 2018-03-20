@@ -28,3 +28,9 @@ sqlite3pp_lib = static_library('sqlite3pp',
   include_directories : inc,
   dependencies : deps,
 )
+
+sqlite3pp_dep = declare_dependency(
+  link_with : sqlite3pp_lib,
+  include_directories : inc,
+  dependencies : deps,
+)
