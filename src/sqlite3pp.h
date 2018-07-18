@@ -380,16 +380,14 @@ template<> bool selecter::row::get<bool>(uint idx) const;
 template<> int selecter::row::get<int>(uint idx) const;
 template<> int64_t selecter::row::get<int64_t>(uint idx) const;
 template<> double selecter::row::get<double>(uint idx) const;
-template<> std::string selecter::row::get<std::string>(uint idx) const;
-template<> const char* selecter::row::get<const char*>(uint idx) const;
+template<> bmcl::StringView selecter::row::get<bmcl::StringView>(uint idx) const;
 template<> bmcl::Bytes selecter::row::get<bmcl::Bytes>(uint idx) const;
 
 extern template bool selecter::row::get<bool>(uint idx) const;
 extern template int selecter::row::get<int>(uint idx) const;
 extern template int64_t selecter::row::get<int64_t>(uint idx) const;
 extern template double selecter::row::get<double>(uint idx) const;
-extern template std::string selecter::row::get<std::string>(uint idx) const;
-extern template const char* selecter::row::get<const char*>(uint idx) const;
+extern template bmcl::StringView selecter::row::get<bmcl::StringView>(uint idx) const;
 extern template bmcl::Bytes selecter::row::get<bmcl::Bytes>(uint idx) const;
 
 class transaction : noncopyable

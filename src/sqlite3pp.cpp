@@ -98,18 +98,9 @@ double selecter::row::get<double>(uint idx) const
 }
 
 template<>
-const char* selecter::row::get<const char*>(uint idx) const
+bmcl::StringView selecter::row::get<bmcl::StringView>(uint idx) const
 {
     return reinterpret_cast<const char*>(sqlite3_column_text(stmt_->stmt_, idx));
-}
-
-template<>
-std::string selecter::row::get<std::string>(uint idx) const
-{
-    const char* p = get<const char*>(idx);
-    if (!p)
-        return std::string();
-    return p;
 }
 
 template<>
