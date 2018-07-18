@@ -100,7 +100,9 @@ double selecter::row::get<double>(uint idx) const
 template<>
 bmcl::StringView selecter::row::get<bmcl::StringView>(uint idx) const
 {
-    return reinterpret_cast<const char*>(sqlite3_column_text(stmt_->stmt_, idx));
+    const void* p = sqlite3_column_text(stmt_->stmt_, idx);
+    int size = sqlite3_column_bytes(stmt_->stmt_, idx);
+    return bmcl::StringView(reinterpret_cast<const char*>(p), size);
 }
 
 template<>
