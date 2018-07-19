@@ -56,11 +56,25 @@ struct convert
     using to_uint = unsigned int;
 };
 
-typedef unsigned int uint;
+using uint = unsigned int;
 
 enum class Error : int {};
-typedef bmcl::Option<Error> OptError;
-typedef bmcl::Result<int64_t, Error> InsError;
+using OptError = bmcl::Option<Error>;
+using InsError = bmcl::Result<int64_t, Error>;
+
+class sql_str
+{
+    friend class statement;
+public:
+    sql_str(sql_str&& other);
+    ~sql_str();
+    const char* as_is() const;
+    const char* non_null() const;
+    std::string to_string() const;
+private:
+    sql_str(const char* p);
+    const char* _p;
+};
 
 const char* to_string(Error);
 
@@ -88,7 +102,7 @@ enum FileFlags
     OPEN_WAL              = 0x00080000,  /* VFS only */
 };
 
-enum class synchronous { Off = 0, Normal = 1, Full = 2, Extra = 3};
+enum class synchronous : uint8_t { Off = 0, Normal = 1, Full = 2, Extra = 3};
 enum class data_type : uint8_t { Integer = 1, Float = 2, Text = 3, Blob = 4, Null = 5 };
 
 
@@ -187,7 +201,7 @@ public:
     explicit database_error(database& db);
 };
 
-enum copy_semantic { copy, nocopy };
+enum copy_semantic : uint8_t { copy, nocopy };
 
 class statement : noncopyable
 {
@@ -203,7 +217,7 @@ public:
     OptError clear_bindings();
     OptError finish();
     bmcl::Option<const char*> err_msg() const;
-    bmcl::Option<const char*> sql() const;
+    sql_str sql() const;
 
     bmcl::Result<uint, Error> bind_index(const char* name);
     bmcl::Result<uint, Error> bind_index(const std::string& name);

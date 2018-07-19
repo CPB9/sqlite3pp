@@ -73,6 +73,13 @@ void error_logger_impl(void* p, int err, char const* msg)
 
 } // namespace
 
+sql_str::sql_str(sql_str&& other) { _p = other._p; other._p = nullptr; }
+sql_str::~sql_str() { if (_p) sqlite3_free((void*)_p); }
+const char* sql_str::as_is() const { return _p; }
+const char* sql_str::non_null() const { return _p ? _p : ""; }
+std::string sql_str::to_string() const { return std::string(_p); }
+sql_str::sql_str(const char* p) : _p(p) {}
+
 template<>
 bool selecter::row::get<bool>(uint idx) const
 {
@@ -458,12 +465,12 @@ OptError statement::exec()
     return static_cast<Error>(r);
 }
 
-bmcl::Option<const char*> statement::sql() const
+sql_str statement::sql() const
 {
     const char* p = sqlite3_expanded_sql(stmt_);
     if (p == nullptr)
-        return bmcl::None;
-    return p;
+        return sql_str(nullptr);
+    return sql_str(p);
 }
 
 OptError statement::reset()
