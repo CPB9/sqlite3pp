@@ -179,6 +179,11 @@ database::~database()
     disconnect();
 }
 
+bool database::is_connected() const
+{
+    return db_ != nullptr;
+}
+
 static inline OptError sqlite_call(int r)
 {
     if (r == SQLITE_OK)
@@ -384,6 +389,16 @@ statement::~statement()
     {
         assert(false);
     }
+}
+
+database& statement::db()
+{
+    return db_;
+}
+
+const database& statement::db() const
+{
+    return db_;
 }
 
 OptError statement::prepare(bmcl::StringView stmt, bmcl::StringView* left)
