@@ -533,16 +533,6 @@ OptError statement::bind(uint idx, bmcl::Bytes value, copy_semantic fcopy)
     return sqlite_call(sqlite3_bind_blob(stmt_, idx, value.data(), static_cast<int>(value.size()), fcopy == copy ? SQLITE_TRANSIENT : SQLITE_STATIC));
 }
 
-OptError statement::bind(uint idx, const char* value, copy_semantic fcopy)
-{
-    return bind(idx, bmcl::StringView(value), fcopy);
-}
-
-OptError statement::bind(uint idx, const std::string& value, copy_semantic fcopy)
-{
-    return bind(idx, bmcl::StringView(value), fcopy);
-}
-
 OptError statement::bind(uint idx, bmcl::Option<bool> value)
 {
     if (value.isNone()) return bind(idx, nullptr);
@@ -567,12 +557,6 @@ OptError statement::bind(uint idx, bmcl::Option<int64_t> value)
     return bind(idx, *value);
 }
 
-OptError statement::bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy)
-{
-    if (value.isNone()) return bind(idx, nullptr);
-    return bind(idx, *value, fcopy);
-}
-
 OptError statement::bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy)
 {
     if (value.isNone()) return bind(idx, nullptr);
@@ -588,14 +572,6 @@ OptError statement::bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semanti
 bmcl::Result<uint, Error> statement::bind_index(const char* name)
 {
     uint r = sqlite3_bind_parameter_index(stmt_, name);
-    if (r == 0)
-        return static_cast<Error>(SQLITE_MISUSE);
-    return r;
-}
-
-bmcl::Result<uint, Error> statement::bind_index(const std::string& name)
-{
-    uint r = sqlite3_bind_parameter_index(stmt_, name.c_str());
     if (r == 0)
         return static_cast<Error>(SQLITE_MISUSE);
     return r;
@@ -723,12 +699,12 @@ bool selecter::row::is_null(uint idx) const
     return type(idx) == data_type::Null;
 }
 
-bool selecter::row::is_null(const char* name) const
+bool selecter::row::is_null(bmcl::StringView name) const
 {
     return type(name) == data_type::Null;
 }
 
-data_type selecter::row::type(const char* name) const
+data_type selecter::row::type(bmcl::StringView name) const
 {
     auto r = stmt_->column_index(name);
     if (r.isNone())
@@ -744,7 +720,7 @@ uint selecter::row::bytes(uint idx) const
     return static_cast<uint>(sqlite3_column_bytes(stmt_->stmt_, idx));
 }
 
-uint selecter::row::bytes(const char* name) const
+uint selecter::row::bytes(bmcl::StringView name) const
 {
     auto r = stmt_->column_index(name);
     if (r.isNone())
@@ -795,23 +771,23 @@ uint selecter::column_count() const
     return sqlite3_column_count(stmt_);
 }
 
-char const* selecter::column_name(uint idx) const
+bmcl::StringView selecter::column_name(uint idx) const
 {
     return sqlite3_column_name(stmt_, idx);
 }
 
-char const* selecter::column_decltype(uint idx) const
+bmcl::StringView selecter::column_decltype(uint idx) const
 {
     return sqlite3_column_decltype(stmt_, idx);
 }
 
-bmcl::Option<uint> selecter::column_index(const char* name) const
+bmcl::Option<uint> selecter::column_index(bmcl::StringView name) const
 {
     auto size = column_count();
     uint i = 0;
     while (i < size)
     {
-        if (std::strcmp(name, column_name(i)) == 0)
+        if (name == column_name(i))
             return i;
         ++i;
     }

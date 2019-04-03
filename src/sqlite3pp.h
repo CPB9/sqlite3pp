@@ -221,15 +221,12 @@ public:
     sql_str sql() const;
 
     bmcl::Result<uint, Error> bind_index(const char* name);
-    bmcl::Result<uint, Error> bind_index(const std::string& name);
 
     OptError bind(uint idx, std::nullptr_t);
     OptError bind(uint idx, bool value);
     OptError bind(uint idx, int value);
     OptError bind(uint idx, double value);
     OptError bind(uint idx, int64_t value);
-    OptError bind(uint idx, const char* value, copy_semantic fcopy);
-    OptError bind(uint idx, const std::string& value, copy_semantic fcopy);
     OptError bind(uint idx, bmcl::StringView value, copy_semantic fcopy);
     OptError bind(uint idx, bmcl::Bytes value, copy_semantic fcopy);
 
@@ -237,7 +234,6 @@ public:
     OptError bind(uint idx, bmcl::Option<int> value);
     OptError bind(uint idx, bmcl::Option<double> value);
     OptError bind(uint idx, bmcl::Option<int64_t> value);
-    OptError bind(uint idx, const bmcl::Option<std::string>& value, copy_semantic fcopy);
     OptError bind(uint idx, bmcl::Option<bmcl::StringView> value, copy_semantic fcopy);
     OptError bind(uint idx, bmcl::Option<bmcl::Bytes> value, copy_semantic fcopy);
 
@@ -255,18 +251,6 @@ public:
         auto r = bind_index(name);
         if (r.isErr()) return r.unwrapErr();
         return bind(r.unwrap(), std::forward<T>(t), fcopy);
-    }
-
-    template<typename T>
-    inline OptError bind(const std::string& name, T&& t)
-    {
-        return bind(name.c_str(), std::forward<T>(t));
-    }
-
-    template<typename T>
-    inline OptError bind(const std::string& name, T&& t, copy_semantic fcopy)
-    {
-        return bind(name.c_str(), std::forward<T>(t), fcopy);
     }
 
     class bindstream
@@ -347,13 +331,13 @@ public:
 
         uint count() const;
         uint bytes(uint idx) const;
-        uint bytes(const char* name) const;
+        uint bytes(bmcl::StringView name) const;
         data_type type(uint idx) const;
-        data_type type(const char* name) const;
+        data_type type(bmcl::StringView name) const;
         bool is_null(uint idx) const;
-        bool is_null(const char* name) const;
+        bool is_null(bmcl::StringView name) const;
         template <class T> T get(uint idx) const;
-        template <class T> T get(const char* name) const
+        template <class T> T get(bmcl::StringView name) const
         {
             auto r = stmt_->column_index(name);
             if (r.isNone())
@@ -378,9 +362,9 @@ public:
     bool next();
     row get_row();
     uint column_count() const;
-    bmcl::Option<uint> column_index(const char* name) const;
-    char const* column_name(uint idx) const;
-    char const* column_decltype(uint idx) const;
+    bmcl::Option<uint> column_index(bmcl::StringView name) const;
+    bmcl::StringView column_name(uint idx) const;
+    bmcl::StringView column_decltype(uint idx) const;
 };
 
 class inserter : public statement
